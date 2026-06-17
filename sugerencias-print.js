@@ -1,24 +1,28 @@
 (function () {
     'use strict';
 
-    // VERSIÓN DEL COMPONENTE (Visible en desarrollo y cabecera impresa)
-    const VERSION_SUGERENCIAS = "v2.1.4";
-    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #e05a2b; font-weight: bold;");
+    // VERSIÓN DEL COMPONENTE (Rompe cachés y visible en consola/interfaz)
+    const VERSION_SUGERENCIAS = "v2.1.5";
+    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #0d5c63; font-weight: bold;");
 
-    // Inyección visual en el panel de logs o cabecera de la UI si existe el contenedor de versiones
+    // Inyección visual en la cabecera de la UI si existe el contenedor de versiones
     const infoCabecera = document.getElementById('version-indicador-ui') || document.querySelector('.version-logs');
     if (infoCabecera) {
-        const tagVersion = document.createElement('span');
-        tagVersion.className = 'text-xs text-slate-400 ml-2';
-        tagVersion.innerText = `| Sugerencias: ${VERSION_SUGERENCIAS}`;
-        infoCabecera.appendChild(tagVersion);
+        // Evitamos duplicados si el script se recarga
+        if (!document.getElementById('sugerencias-version-badge')) {
+            const tagVersion = document.createElement('span');
+            tagVersion.id = 'sugerencias-version-badge';
+            tagVersion.className = 'text-xs text-slate-400 ml-2';
+            tagVersion.innerText = `| Sugerencias: ${VERSION_SUGERENCIAS}`;
+            infoCabecera.appendChild(tagVersion);
+        }
     }
 
     const ALERGENOS_BASE_PATH = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
     stylePrint.innerHTML = `
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
         
         @page { 
             size: A4; 
@@ -99,7 +103,6 @@
         const isUsOpen = modoObjetivo === 'USOPEN';
         let fuenteDatos = [];
 
-        // Extracción forzada y aislada de orígenes de datos sin depender de estados cruzados de la app
         if (isUsOpen) {
             if (window.activeStateContainer && window.activeStateContainer.csvDataUSOPEN) {
                 fuenteDatos = window.activeStateContainer.csvDataUSOPEN;
@@ -125,13 +128,16 @@
         
         if (!contenedor) return;
 
-        // Si la fuente sigue vacía porque el sistema está levantando el CSV principal, reintentamos ordenadamente
         if (!fuenteDatos || fuenteDatos.length === 0) {
             setTimeout(() => cargarCartaPorModo(modoObjetivo), 250);
             return;
         }
 
-        // Filtrado por rango estricto ID (12000-12999) para el lote de sugerencias
+        // Evitamos sobreescribir si ya está pintado y tiene contenido válido para ahorrar ciclos de CPU
+        if (contenedor.children.length > 1 && contenedor.querySelector('.sugerencias-body')) {
+            return;
+        }
+
         const platosActivos = fuenteDatos.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
 
         let entrantes = [], principales = [], postres = [], vinos = [];
@@ -227,21 +233,32 @@
         cargarCartaPorModo(modoActual);
     }
 
-    // SOLUCIÓN DEFINITIVA: Observador de mutaciones del DOM (MutationObserver)
-    // En lugar de escuchar los clicks de las pestañas que la UI rompe continuamente, escuchamos
-    // directamente al cuerpo del documento. Cuando aparezca o cambie un contenedor de sugerencias, lo renderizamos al instante con su lote de datos correcto.
+    // MUTATION OBSERVER OPTIMIZADO (Evita bucles infinitos desconectando la escucha durante el render)
     const observadorInstante = new MutationObserver((mutations) => {
+        let debaRenderizar = false;
+        
         mutations.forEach((mutation) => {
             if (mutation.addedNodes.length) {
-                const modoActual = window.currentMode || 'RG';
-                if (document.getElementById('sugerencias-contenido') && modoActual === 'RG') {
-                    cargarCartaPorModo('RG');
-                }
-                if (document.getElementById('sugerencias-contenido-usopen') && modoActual === 'USOPEN') {
-                    cargarCartaPorModo('USOPEN');
-                }
+                debaRenderizar = true;
             }
         });
+
+        if (debaRenderizar) {
+            const modoActual = window.currentMode || 'RG';
+            consthasRG = document.getElementById('sugerencias-contenido');
+            const hasUSOpen = document.getElementById('sugerencias-contenido-usopen');
+
+            if (hasRG || hasUSOpen) {
+                // Desconectamos para evitar que nuestras propias mutaciones disparen el observer de nuevo
+                observadorInstante.disconnect();
+                
+                if (hasRG && modoActual === 'RG') cargarCartaPorModo('RG');
+                if (hasUSOpen && modoActual === 'USOPEN') cargarCartaPorModo('USOPEN');
+                
+                // Volvemos a escuchar tras actualizar el DOM
+                observadorInstante.observe(document.body, { childList: true, subtree: true });
+            }
+        }
     });
 
     observadorInstante.observe(document.body, { childList: true, subtree: true });
@@ -276,7 +293,7 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
-    // Primer disparo defensivo de hidratación
+    // Hidratación inicial controlada
     cargarCartaPorModo('RG');
     cargarCartaPorModo('USOPEN');
 })();
