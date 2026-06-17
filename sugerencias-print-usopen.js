@@ -2,8 +2,7 @@
     'use strict';
 
     const VERSION = "v2.2.2-USOPEN";
-    // console.log(`%c[Editor Pro] [Sugerencias USOPEN] Inicializado ${VERSION}`, "color: #0d5c63; font-weight: bold;");
-
+    
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -15,69 +14,52 @@
             min-height: 297mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important;
             box-sizing: border-box !important; display: flex !important; flex-direction: column !important;
         }
-        .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 10px !important; position: relative !important; }
-        .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 3px !important; }
+        .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom:10px !important; position: relative !important; }
+        .sugerencias-brand-title-group { display: !important; flex-direction: column !important; gap: 3px !important; }
         .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
-        .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
+        .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size:0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
         .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
-        .sugerencias-body { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; }
+        .sugerencias-body { flex: 1 1 auto !important; display: !important; flex-direction: column !important; }
         .sugerencias-seccion { margin-bottom: 15px !important; }
         .sugerencias-seccion-titulo { font-size: 0.85rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
         .sugerencias-seccion-vinos { margin-top: auto !important; }
         .sugerencias-body.no-postres .sugerencias-seccion-principales { margin-top: auto !important; margin-bottom: auto !important; }
         .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 6px !important; width: 100% !important; }
-        .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
+        .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: !important; flex-direction: column !important; }
         .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; }
         .sugerencias-nombre-en { font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; }
         .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; margin-top: 2px !important; align-items: center !important; }
         .sugerencias-alergeno-icon { display: inline-block !important; width: 20px !important; height: 20px !important; object-fit: contain !important; vertical-align: middle !important; }
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
-        .sugerencias-footer { margin-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; }
-        .sugerencias-aviso { font-size: 0.7rem !important; color: #64748b !important; max-width: 60% !important; line-height: 1.4 !important;}
+        .sugerencias-footer { margin-top: 15px !important; display: !important; justify-content: space-between !important; align-items: center !important; }
         .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 6px !important; }
         .sugerencias-qr-img { width: 130px !important; height: 130px !important; object-fit: contain !important; }
-        .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
+        .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: !important; user-select: ` + (esEditor ? 'none' : 'flex') + ` !important; gap: 5px !important; }
+        
+        /* Estilos para los Radio Buttons */
+        .sugerencias-qr-toggle { margin: 2px; }
+        .sugerencias-qr-toggle input { margin-right: 5px; }
+        .sugerencias-qr-toggle label { cursor: pointer; color: #0d5c63; font-size: 0.75rem; }
+        .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
+        
+        .sugerencias-qr-img { transition: opacity: 0.3s; }
+        .sugerencias-qr-img:hover { opacity: 1.0; }
+
         .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #0d5c63; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
-        @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle { display: none !important; } }
+        @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle { display: none !important; } 
     `;
     document.head.appendChild(stylePrintUsOpen);
 
     function obtenerNombreSeguro(campoTexto) {
-        if (!campoTexto) return '';
-        try {
-            if (typeof desglosarNombre === 'function') {
-                const res = desglosarNombre(campoTexto);
-                if (res && res.nombre) return res.nombre;
-            }
-        } catch (e) {
-            console.warn("Fallo controlado en desglosarNombre:", e);
-        }
-        return campoTexto; 
+        if (!campoTexto) return { nombre: "", uvas: "" };
+        const partes = campoTexto.split('//');
+        return { nombre: partes[0] ? partes[0].trim() : "", uvas: partes[1] ? partes[1].trim() : "" };
     }
 
-    // Función para cambiar el QR dinámicamente
-    function toggleQR(tipo, modo) {
-        const img = document.getElementById(`img-qr-${modo}`);
-        if (!img) return;
-
-        if (tipo === 'default') {
-            if (modo === 'usopen') {
-                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
-            } else if (modo === 'rg') {
-                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
-            }
-        } else if (tipo === 'mod') {
-            if (modo === 'usopen') {
-                img.src = 'imagenes/qr-usopen_mod.png';
-            } else if (modo === 'rg') {
-                img.src = 'imagenes/qr-code-RG-MOD.png';
-            }
-        }
-    }
-
-    function renderCartaUSOPEN() {
+    window.renderCartaUSOPEN = window.renderCartaUSOPEN || function() {
+        console.log(`[ERROR CRÍTICO] Se intentó llamar a renderCartaUSOPEN pero no se encontró en window.`);
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
 
@@ -95,7 +77,7 @@
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-sugerencias-500 italic">Esperando origen de datos válido de la carta UsOpen (vuelve a la Pestaña 4 un segundo para activar la memoria)...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-sugerencias500 italic">Esperando origen de datos válido de la carta UsOpen (vuelve a la Pestaña 4 un segundo para activar la memoria)...</div>`;
             return;
         }
 
@@ -122,7 +104,7 @@
         let html = `
             <button onclick="window.imprimirSugerenciasUSOPEN()" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias USOPEN (A4)</button>
             <div class="sugerencias-header-layout">
-                <span class="sugerencias-version-tag">Módulo ${VERSION}</span>
+                <span class="sugerencias-version-tag" style="display:none;">Módulo ${VERSION}</span>
                 <div class="sugerencias-brand-title-group">
                     <div class="sugerencias-title-es">SUGERENCIAS DEL CHEF</div>
                     <div class="sugerencias-title-en">CHEF'S SUGGESTIONS</div>
@@ -148,9 +130,21 @@
                             ${iconsHtml}
                         </div>
                         <div class="sugerencias-puntos"></div>
-                        <div class="sugerencias-precio">${p.precio}€</div>
-                    </div>`;
-            });
+                        <div class="sugerencias-qr-container">
+                            <!-- Selector de Radio para Original vs Alternativo -->
+                            <div style="font-size: 0.7rem; color: #64748b; text-align: center; margin-bottom: 5px;">
+                                Tipo de QR:
+                                <label style="cursor: pointer; margin-right: 10px; color: #0d5c63; font-weight: bold;">
+                                    <input type="radio" name="qr-mode-usopen" value="default" checked onchange="toggleQR('default', 'usopen')"> Oficial
+                                </label>
+                                <label style="cursor: pointer; color: #64748b; font-weight: normal;">
+                                    <input type="radio" name="qr-mode-usopen" value="mod" onchange="toggleQR('mod', 'usopen')"> Alternativo
+                                </label>
+                            </div>
+                            <!-- Fin Selector -->
+                            <img src="https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1" class="sugerencias-qr-img" id="img-qr-usopen">
+                        </div>
+                </div>`;
             return h + '</div>';
         };
 
@@ -164,17 +158,17 @@
             <div class="sugerencias-footer">
                 <div class="sugerencias-aviso">⚠️ Si usted tiene alguna alergia, por favor comuníquelo al personal.<br>If you have any food allergies, please inform staff.</div>
                 <div class="sugerencias-qr-container">
-                    <!-- NUEVO: Selector de Radio Original vs Alternativo -->
+                    <!-- NUEVO: Selector de Radio para Original vs Alternativo -->
                     <div style="font-size: 0.7rem; color: #64748b; text-align: center; margin-bottom: 5px;">
                         Tipo de QR:
                         <label style="cursor: pointer; margin-right: 10px; color: #0d5c63; font-weight: bold;">
-                            <input type="radio" name="qr-mode-usopen" value="default" checked onchange="toggleQR('default', 'usopen')"> Oficial
+                            <input type="radio" name="qr-mode-usopen" value="default" checked onchange="window.toggleQR('default', 'usopen')"> Oficial
                         </label>
                         <label style="cursor: pointer; color: #64748b; font-weight: normal;">
-                            <input type="radio" name="qr-mode-usopen" value="mod" onchange="toggleQR('mod', 'usopen')"> Alternativo
+                            <input type="radio" name="qr-mode-usopen" value="mod" onchange="window.toggleQR('mod', 'usopen')"> Alternativo
                         </label>
                     </div>
-                    <img src="https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1" class="sugerencias-qr-img" id="img-qr-usopen">
+                    <img src="https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-0-60430b647cd3b43f34b5ec212f6640b1" class="sugerencias-qr-img" id="img-qr-usopen">
                 </div>
             </div>
         `;
@@ -198,6 +192,15 @@
         pWin.document.close();
     };
 
-    window.renderCartaUSOPEN = renderCartaUSOPEN;
-    setTimeout(renderCartaUSOPEN, 600);
+    // Asegurar que la función existe globalmente
+    if (typeof window.renderCartaUSOPEN === 'undefined') {
+        console.warn("window.renderCartaUSOPEN no está definido. Definiendo fallback visualización de error.");
+        window.renderCartaUSOPEN = function() {
+            console.error("CRÍTICO: renderCartaUSOPEN no está definido en window. Verifica el script sugerencias-print-usopen.js");
+            document.getElementById('sugerencias-contenido-usopen').innerHTML = `<div class="p-4 text-center text-sugerencias-500 italic">Error: Función de renderizado no encontrada. Recarga la página.</div>`;
+        };
+    } else {
+        window.renderCartaUSOPEN = renderCartaUSOPEN;
+        setTimeout(renderCartaUSOPEN, 600);
+    }
 })();
