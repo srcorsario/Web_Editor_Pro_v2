@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.3-RG";
+    const VERSION = "v2.2.4-RG";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
@@ -55,18 +55,17 @@
         const img = document.getElementById(`img-qr-${modo}`);
         if (!img) return;
 
-        if (tipo === 'default') {
-            if (modo === 'usopen') {
-                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1'; 
-            } else if (modo === 'rg') {
-                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-0-60430b647cd3b43f34b5ec212f6640b1';
+        if (modo === 'rg') {
+            if (tipo === 'default') {
+                img.src = 'qr-code-RG-MOD.png'; // Oficial para RG
+            } else if (tipo === 'mod') {
+                img.src = 'qr-code.png'; // Alternativo para RG
             }
-        } else if (tipo === 'mod') {
-            // MODIFICADO: Rutas corregidas quitando el prefijo "imagenes/" porque están en la raíz
-            if (modo === 'usopen') {
-                img.src = 'qr-usopen_mod.png';
-            } else if (modo === 'rg') {
-                img.src = 'qr-code-RG-MOD.png';
+        } else if (modo === 'usopen') {
+            if (tipo === 'default') {
+                img.src = 'qr-usopen_oficial.png'; // Oficial para USOPEN
+            } else if (tipo === 'mod') {
+                img.src = 'qr-usopen_mod.png'; // Alternativo para USOPEN
             }
         }
     };
@@ -166,14 +165,14 @@
                 <div class="sugerencias-qr-container">
                     <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none;">
                         Tipo de QR:
-                        <label style="cursor: pointer; margin-right: 10px; color: #0d5c63; font-weight: bold;">
-                            <input type="radio" name="qr-mode-rg-footer" value="default" checked onchange="window.toggleQR('default', 'rg')"> Oficial
+                        <label style="cursor: pointer; margin-right: 10px; color: #64748b; font-weight: normal;">
+                            <input type="radio" name="qr-mode-rg-footer" value="default" onchange="window.toggleQR('default', 'rg')"> Oficial
                         </label>
-                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
-                            <input type="radio" name="qr-mode-rg-footer" value="mod" onchange="window.toggleQR('mod', 'rg')"> Alternativo
+                        <label style="cursor: pointer; color: #0d5c63; font-weight: bold;">
+                            <input type="radio" name="qr-mode-rg-footer" value="mod" checked onchange="window.toggleQR('mod', 'rg')"> Alternativo
                         </label>
                     </div>
-                    <img src="https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-0-60430b647cd3b43f34b5ec212f6640b1" class="sugerencias-qr-img" id="img-qr-rg">
+                    <img src="qr-code.png" class="sugerencias-qr-img" id="img-qr-rg">
                 </div>
             </div>
         `;
