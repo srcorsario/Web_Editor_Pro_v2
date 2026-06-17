@@ -1,8 +1,8 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.2-USOPEN-DEBUG";
-    console.log(`%c[Editor Pro] [Sugerencias USOPEN] Inicializado ${VERSION}`, "color: #0d5c63; font-weight: bold;");
+    const VERSION = "v2.2.2-USOPEN";
+    // console.log(`%c[Editor Pro] [Sugerencias USOPEN] Inicializado ${VERSION}`, "color: #0d5c63; font-weight: bold;");
 
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
@@ -44,7 +44,6 @@
     `;
     document.head.appendChild(stylePrintUsOpen);
 
-    // Función segura para extraer nombres mitigando cualquier error fatal
     function obtenerNombreSeguro(campoTexto) {
         if (!campoTexto) return '';
         try {
@@ -55,14 +54,10 @@
         } catch (e) {
             console.warn("Fallo controlado en desglosarNombre:", e);
         }
-        return campoTexto; // Fallback
+        return campoTexto; 
     }
 
     function renderCartaUSOPEN() {
-        console.log(`%c[PRINT-USOPEN] Iniciando renderizado...`, "color: #0d5c63; font-weight: bold;");
-        console.log(`[PRINT-USOPEN] Modo actual: ${window.currentMode}`);
-        console.log(`[PRINT-USOPEN] Existe window.datosLocales: ${!!window.datosLocales}`);
-
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
 
@@ -72,13 +67,11 @@
                              localStorage.getItem('csvData_usopen');
 
         if (backupUSOPEN) { 
-            try { fuente = JSON.parse(backupUSOPEN); console.log("[PRINT-USOPEN] Usando fuente LocalStorage USOPEN"); } catch(e) { console.error("Error USOPEN parse", e); } 
+            try { fuente = JSON.parse(backupUSOPEN); } catch(e) { console.error("Error USOPEN parse", e); } 
         } else if (window.datosLocales && window.currentMode === 'USOPEN') {
             fuente = window.datosLocales;
-            console.log("[PRINT-USOPEN] Usando fuente window.datosLocales (Modo USOPEN coincide)");
         } else if (window.csvDataUSOPEN) {
             fuente = window.csvDataUSOPEN;
-            console.log("[PRINT-USOPEN] Usando fuente window.csvDataUSOPEN");
         }
 
         if (!fuente || fuente.length === 0) {
@@ -86,15 +79,7 @@
             return;
         }
 
-        console.log(`[PRINT-USOPEN] Fuente tiene ${fuente.length} items totales.`);
-        
         const platos = fuente.filter(p => p && p.activa && p.id >= 12000 && p.id <= 12999);
-        console.log(`%c[PRINT-USOPEN] Items filtrados (ID 12000-12999): ${platos.length}`, "background: yellow; color: black; padding: 2px;");
-        
-        if (platos.length > 0) {
-             console.table(platos.map(p => ({id: p.id, es: p.es.substring(0, 30) + '...', precio: p.precio})));
-        }
-
         let entrantes = [], principales = [], postres = [], vinos = [];
 
         platos.forEach(p => {
@@ -113,8 +98,6 @@
                 entrantes.push(p);
             }
         });
-
-        console.log(`[PRINT-USOPEN] Distribución -> Entrantes: ${entrantes.length}, Principales: ${principales.length}, Postres: ${postres.length}, Vinos: ${vinos.length}`);
 
         let html = `
             <button onclick="window.imprimirSugerenciasUSOPEN()" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias USOPEN (A4)</button>
