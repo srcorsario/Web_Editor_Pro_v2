@@ -1,15 +1,18 @@
 (function () {
     'use strict';
 
-    // VERSIÓN DEL COMPONENTE (Visible en consola y cabecera global)
-    const VERSION_SUGERENCIAS = "v2.1.8";
-    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #10b981; font-weight: bold;");
+    // VERSIÓN DEL COMPONENTE (Visible en desarrollo y cabecera global)
+    const VERSION_SUGERENCIAS = "v2.1.9";
+    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #3b82f6; font-weight: bold;");
 
-    // SOLUCIÓN CABECERA: Forzamos la inyección visual buscando patrones comunes en tu barra superior
-    function inyectarVersionEnCabecera() {
-        if (document.getElementById('sugerencias-version-badge')) return;
+    // Bucle de rescate para la cabecera: No para hasta que encuentra dónde meter la versión
+    const intervaloVersion = setInterval(() => {
+        const badgeExistente = document.getElementById('sugerencias-version-badge');
+        if (badgeExistente) {
+            clearInterval(intervaloVersion);
+            return;
+        }
 
-        // Intentamos buscar el contenedor por ID, por clase de logs, o directamente el primer párrafo/div pequeño de la cabecera
         const contenedor = document.getElementById('version-indicador-ui') || 
                            document.querySelector('.version-logs') || 
                            document.querySelector('header .text-xs') || 
@@ -21,17 +24,19 @@
             tagVersion.className = 'text-xs text-slate-400 ml-2';
             tagVersion.innerText = ` - sugerencias-print.js ${VERSION_SUGERENCIAS}`;
             contenedor.appendChild(tagVersion);
+            clearInterval(intervaloVersion);
         } else {
-            // Plan de respaldo si no encuentra ninguna clase: buscar texto que contenga "app.js" y añadirlo al lado
+            // Alternativa: buscar el bloque de texto plano que tenga las otras versiones
             const todosLosElementos = document.querySelectorAll('header *, div *');
             for (let el of todosLosElementos) {
                 if (el.children.length === 0 && el.textContent.includes('app.js') && !el.textContent.includes('sugerencias-print')) {
                     el.textContent += ` - sugerencias-print.js ${VERSION_SUGERENCIAS}`;
+                    clearInterval(intervaloVersion);
                     break;
                 }
             }
         }
-    }
+    }, 400);
 
     const ALERGENOS_BASE_PATH = 'imagenes/alergenos/';
 
@@ -39,67 +44,38 @@
     stylePrint.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
         
-        @page { 
-            size: A4; 
-            margin: 0; 
-        }
-
+        @page { size: A4; margin: 0; }
         .sugerencias-panel { 
-            background: #ffffff !important; 
-            padding: 25px 35px !important; 
-            width: 210mm !important; 
-            min-height: 297mm !important; 
-            margin: 0 auto !important; 
-            font-family: 'Montserrat', sans-serif !important;
-            box-sizing: border-box !important;
-            display: flex !important; 
-            flex-direction: column !important;
+            background: #ffffff !important; padding: 25px 35px !important; width: 210mm !important; 
+            min-height: 297mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important;
+            box-sizing: border-box !important; display: flex !important; flex-direction: column !important;
         }
-        
         .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 10px !important; position: relative !important; }
         .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 3px !important; }
         .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
-        
         .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
         .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
-        
-        .sugerencias-body {
-            flex: 1 1 auto !important;
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
+        .sugerencias-body { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; }
         .sugerencias-seccion { margin-bottom: 15px !important; }
         .sugerencias-seccion-titulo { font-size: 0.85rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
-        
         .sugerencias-seccion-vinos { margin-top: auto !important; }
         .sugerencias-body.no-postres .sugerencias-seccion-principales { margin-top: auto !important; margin-bottom: auto !important; }
-        
         .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 6px !important; width: 100% !important; }
         .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
-        
         .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; }
         .sugerencias-nombre-en { font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; }
-        
         .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; margin-top: 2px !important; align-items: center !important; }
         .sugerencias-alergeno-icon { display: inline-block !important; width: 20px !important; height: 20px !important; object-fit: contain !important; vertical-align: middle !important; }
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
-        
         .sugerencias-footer { margin-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; }
         .sugerencias-aviso { font-size: 0.7rem !important; color: #64748b !important; max-width: 60% !important; line-height: 1.4 !important;}
-        
         .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 6px !important; }
         .sugerencias-qr-img { width: 130px !important; height: 130px !important; object-fit: contain !important; }
         .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
-        
         .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
-        
-        @media print { 
-            body { -webkit-print-color-adjust: exact !important; } 
-            .btn-imprimir-a4, .sugerencias-qr-toggle { display: none !important; }
-        }
+        @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle { display: none !important; } }
     `;
     document.head.appendChild(stylePrint);
 
@@ -113,7 +89,7 @@
         return iconsHtml + '</div>';
     }
 
-    function cargarCartaPorModo(modoObjetivo) {
+    function cargarCartaPorModo(modoObjetivo, force = false) {
         const isUsOpen = modoObjetivo === 'USOPEN';
         let fuenteDatos = [];
 
@@ -122,18 +98,14 @@
                 fuenteDatos = window.activeStateContainer.csvDataUSOPEN;
             } else {
                 const backupUSOpen = localStorage.getItem('csvData_USOPEN');
-                if (backupUSOpen) {
-                    try { fuenteDatos = JSON.parse(backupUSOpen); } catch(e) {}
-                }
+                if (backupUSOpen) { try { fuenteDatos = JSON.parse(backupUSOpen); } catch(e) {} }
             }
         } else {
             if (typeof datosLocales !== 'undefined' && datosLocales && datosLocales.length > 0) {
                 fuenteDatos = datosLocales;
             } else {
                 const backupRG = localStorage.getItem('csvData');
-                if (backupRG) {
-                    try { fuenteDatos = JSON.parse(backupRG); } catch(e) {}
-                }
+                if (backupRG) { try { fuenteDatos = JSON.parse(backupRG); } catch(e) {} }
             }
         }
 
@@ -143,18 +115,18 @@
         if (!contenedor) return;
 
         if (!fuenteDatos || fuenteDatos.length === 0) {
-            setTimeout(() => cargarCartaPorModo(modoObjetivo), 200);
+            setTimeout(() => cargarCartaPorModo(modoObjetivo, force), 200);
             return;
         }
 
-        // Si ya tiene el cuerpo de la carta renderizado con datos, no hacemos nada para evitar parpadeos
-        if (contenedor.querySelector('.sugerencias-body')) {
+        // Si ya está renderizado con el árbol correcto y no viene forzado, no hacemos nada
+        if (!force && contenedor.querySelector('.sugerencias-body')) {
             return;
         }
 
         const platosActivos = fuenteDatos.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
-
         let entrantes = [], principales = [], postres = [], vinos = [];
+        
         platosActivos.forEach(p => {
             const id = p.id;
             const nombreEs = desglosarNombre(p.es).nombre.toLowerCase();
@@ -243,23 +215,31 @@
     }
 
     function cargarCarta() {
-        // Renderizado omnidireccional: si el contenedor de la 5 está en pantalla, lo llenamos sí o sí
-        if (document.getElementById('sugerencias-contenido-usopen')) {
-            cargarCartaPorModo('USOPEN');
-        }
-        if (document.getElementById('sugerencias-contenido')) {
-            cargarCartaPorModo('RG');
-        }
+        cargarCartaPorModo('RG');
+        cargarCartaPorModo('USOPEN');
     }
 
-    // MUTATION OBSERVER TOTALMENTE REACTIVO
+    // INTERCEPTADOR DE CLICS DIRECTOS: Rompe cualquier retraso del framework al cambiar de pestaña
+    document.addEventListener('click', (e) => {
+        const elementoClicado = e.target.closest('button, a, .tab-item, [onclick*="switchTab"]');
+        if (elementoClicado) {
+            // Un retraso mínimo táctico para dar tiempo a que la app monte el contenedor en la pantalla
+            setTimeout(() => {
+                if (document.getElementById('sugerencias-contenido-usopen')) {
+                    cargarCartaPorModo('USOPEN', true);
+                }
+                if (document.getElementById('sugerencias-contenido')) {
+                    cargarCartaPorModo('RG', true);
+                }
+            }, 50);
+        }
+    }, true);
+
+    // MUTATION OBSERVER ULTRA-REACTIVO SEGURIZADO
     const observadorInstante = new MutationObserver((mutations) => {
         let debaRenderizar = false;
-        
         mutations.forEach((mutation) => {
-            if (mutation.addedNodes.length) {
-                debaRenderizar = true;
-            }
+            if (mutation.addedNodes.length) debaRenderizar = true;
         });
 
         if (debaRenderizar) {
@@ -268,14 +248,8 @@
 
             if (hasRG || hasUSOpen) {
                 observadorInstante.disconnect();
-                
-                // Intentamos inyectar la versión de nuevo si el DOM cambió
-                inyectarVersionEnCabecera();
-                
-                // Forzamos el renderizado sin importar el estado cruzado de las variables de pestaña
                 if (hasRG) cargarCartaPorModo('RG');
                 if (hasUSOpen) cargarCartaPorModo('USOPEN');
-                
                 observadorInstante.observe(document.body, { childList: true, subtree: true });
             }
         }
@@ -284,7 +258,7 @@
     observadorInstante.observe(document.body, { childList: true, subtree: true });
 
     window.imprimirSugerenciasA4 = function() {
-        const isUsOpen = window.currentMode === 'USOPEN' || !!document.getElementById('sugerencias-contenido-usopen');
+        const isUsOpen = !!document.getElementById('sugerencias-contenido-usopen');
         const contenedor = document.getElementById(isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido');
         if (!contenedor) return;
 
@@ -313,10 +287,6 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
-    // Hidratación y escaneo inmediato en carga
-    setTimeout(() => {
-        inyectarVersionEnCabecera();
-        cargarCartaPorModo('RG');
-        cargarCartaPorModo('USOPEN');
-    }, 100);
+    // Ejecución inicial reactiva voluntaria
+    cargarCarta();
 })();
