@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.1-USOPEN";
+    const VERSION = "v2.2.2-USOPEN";
     console.log(`%c[Editor Pro] [Sugerencias USOPEN] Inicializado ${VERSION}`, "color: #0d5c63; font-weight: bold;");
 
     const PATH_ALERGENOS = 'imagenes/alergenos/';
@@ -44,11 +44,24 @@
     `;
     document.head.appendChild(stylePrintUsOpen);
 
+    // Función segura para extraer nombres mitigando cualquier error fatal
+    function obtenerNombreSeguro(campoTexto) {
+        if (!campoTexto) return '';
+        try {
+            if (typeof desglosarNombre === 'function') {
+                const res = desglosarNombre(campoTexto);
+                if (res && res.nombre) return res.nombre;
+            }
+        } catch (e) {
+            console.warn("Fallo controlado en desglosarNombre:", e);
+        }
+        return campoTexto; // Fallback
+    }
+
     function renderCartaUSOPEN() {
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
 
-        // Lectura híbrida exhaustiva: localStorage multiclave o estados globales dinámicos de USOpen
         let fuente = [];
         const backupUSOPEN = localStorage.getItem('csvData_USOPEN') || 
                              localStorage.getItem('csvDataUSOPEN') || 
@@ -67,13 +80,14 @@
             return;
         }
 
-        const platos = fuente.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
+        const platos = fuente.filter(p => p && p.activa && p.id >= 12000 && p.id <= 12999);
         let entrantes = [], principales = [], postres = [], vinos = [];
 
         platos.forEach(p => {
-            const id = p.id;
-            const textEs = desglosarNombre(p.es).nombre.toLowerCase();
-            if (id === 12990 || (textEs.includes('vino') && !textEs.includes('copa') && !textEs.includes('vinagreta'))) {
+            const id = parseInt(p.id, 10);
+            const textEsBajo = obtenerNombreSeguro(p.es).toLowerCase();
+            
+            if (id === 12990 || (textEsBajo.includes('vino') && !textEsBajo.includes('copa') && !textEsBajo.includes('vinagreta'))) {
                 vinos.push(p);
             } else if (id >= 12100 && id <= 12399) {
                 entrantes.push(p);
@@ -110,8 +124,8 @@
                 h += `
                     <div class="sugerencias-plato">
                         <div class="sugerencias-plato-nombres">
-                            <span class="sugerencias-nombre-es">${desglosarNombre(p.es).nombre}</span>
-                            <span class="sugerencias-nombre-en">${desglosarNombre(p.en).nombre}</span>
+                            <span class="sugerencias-nombre-es">${obtenerNombreSeguro(p.es)}</span>
+                            <span class="sugerencias-nombre-en">${obtenerNombreSeguro(p.en)}</span>
                             ${iconsHtml}
                         </div>
                         <div class="sugerencias-puntos"></div>
