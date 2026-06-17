@@ -23,7 +23,7 @@
             box-sizing: border-box !important;
             display: flex !important; 
             flex-direction: column !important;
-        }
+            }
         
         .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 10px !important; }
         .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 3px !important; }
@@ -31,6 +31,8 @@
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
         
         .sugerencias-logo-img { width: 200px !important; height: auto !important; }
+        /* NUEVO: Escala unificada idéntica a logo RG_REST / sugerencias-logo-img */
+        .sugerencias-header-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         
         .sugerencias-body {
             flex: 1 1 auto !important;
@@ -204,7 +206,7 @@
         
         const QR_URL = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
         
-        // MODIFICADO: Usar imagen específica USOPEN_REST.png para el encabezado de UsOpen
+        // MODIFICADO: Añadido manejador defensivo onerror para evitar el icono de imagen no cargada si falla de forma local en la pestaña 5
         const HEADER_TEXT_URL = isUsOpen ? 'USOPEN_REST.png' : 'https://z-cdn-media.chatglm.cn/files/ea3128c5-540d-482e-adee-1ecbc193dd9c.png?auth_key=1881116219-cf95c1daa2014b019656762380eb6c80-0-8816330462d4295fd9dfe95d1cfab6e5';
         const TITLE_TEXT = isUsOpen ? 'SUGERENCIAS DEL DIA' : 'SUGERENCIAS DEL CHEF';
         const SUBTITLE_TEXT = isUsOpen ? "DAILY SUGGESTIONS" : "CHEF'S SUGGESTIONS";
@@ -226,9 +228,10 @@
         `;
         
         if (HEADER_TEXT_URL) {
-             html += `
+            // MODIFICADO: Se añade la clase .sugerencias-header-img para control de escala y un condicional defensivo onerror para ocultar o reemplazar elegantemente si la ruta local no resuelve en la Hoja 5.
+            html += `
             <div class="sugerencias-subheader">
-                <img src="${HEADER_TEXT_URL}" class="sugerencias-header-img">
+                <img src="${HEADER_TEXT_URL}" class="sugerencias-header-img" onerror="this.style.opacity='0'; this.style.height='0px'; console.warn('No se pudo cargar la imagen local del encabezado.');">
             </div>
             `;
         }
@@ -338,6 +341,8 @@
                     .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
                     .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
                     .sugerencias-logo-img { width: 200px !important; height: auto !important; }
+                    /* MODIFICADO: Inyección explícita de escala en el sub-documento A4 */
+                    .sugerencias-header-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
                     
                     .sugerencias-body {
                         flex: 1 1 auto !important;
