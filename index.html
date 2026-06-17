@@ -7,7 +7,7 @@
     <link rel="icon" href="setting.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -36,12 +36,10 @@
             <button class="tab-btn active" onclick="switchTab('editor', this)">1 - Editor Carta RG</button>
             <button class="tab-btn" onclick="switchTab('sugerencias', this)">2 - Sugerencias RG</button>
             <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: 50px;">3 - Traductor Pro & Ajustes</button>
-            <!-- NUEVAS PESTAÑAS USOPEN -->
             <button class="tab-btn" onclick="switchTab('editor-usopen', this)">4 - Editor Carta UsOpen</button>
             <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5 - Sugerencias UsOpen</button>
         </div>
 
-        <!-- PESTAÑAS RG -->
         <div id="tab-editor" class="tab-content active">
             <div id="editor-dinamico"></div>
         </div>
@@ -52,7 +50,6 @@
             </div>
         </div>
 
-        <!-- PESTAÑA PRO (Compartida) -->
         <div id="tab-pro" class="tab-content pro-panel" style="display: none;">
             
             <div class="flex flex-col md:flex-row gap-4 mb-4">
@@ -123,7 +120,6 @@
 
         </div>
 
-        <!-- PESTAÑAS USOPEN -->
         <div id="tab-editor-usopen" class="tab-content" style="display: none;">
             <div id="editor-dinamico-usopen"></div>
         </div>
@@ -216,16 +212,17 @@
         </div>
     </div>
 
-    <!-- MODIFICADO: Orden de carga de scripts ajustado para incluir config.js primero -->
     <script src="config.js"></script>
     <script src="languages.js"></script>
     <script src="state.js"></script>
     <script src="app.js"></script>
     <script type="module" src="ui.js"></script>
-    <script src="sugerencias-print.js"></script>
+
+    <script src="sugerencias-print-rg.js"></script>
+    <script src="sugerencias-print-usopen.js"></script>
 
     <script>
-        // Lógica nativa de Pestañas (Tabs)
+        // Lógica nativa de Pestañas (Tabs) Corregida
         function switchTab(tabId, btnElement) {
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.remove('active');
@@ -237,37 +234,37 @@
             document.getElementById('tab-' + tabId).style.display = 'block';
             btnElement.classList.add('active');
 
-            // NUEVO: Gestionar el modo (RG vs USOPEN) y cargar/renderizar datos
+            // GESTIÓN TOTALMENTE AISLADA DE ENTORNO
             if (tabId === 'editor') {
                 window.currentMode = 'RG';
                 document.querySelector('.btn-add-float').style.display = 'block';
                 document.querySelector('.btn-guardar-main').style.display = 'block';
-                cargar(); // Recargar datos RG
+                cargar(); 
             } 
             else if (tabId === 'sugerencias') {
                 window.currentMode = 'RG';
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
-                // MODIFICADO: Forzar recarga de datos RG para evitar contaminación con USOpen
                 cargar();
-                if (typeof window.renderSugerenciasLogic === 'function') {
-                    window.renderSugerenciasLogic();
+                // MODIFICADO: Ejecuta el disparador específico de la carta RG
+                if (typeof window.renderCartaRG === 'function') {
+                    window.renderCartaRG();
                 }
             }
             else if (tabId === 'editor-usopen') {
                 window.currentMode = 'USOPEN';
                 document.querySelector('.btn-add-float').style.display = 'block';
                 document.querySelector('.btn-guardar-main').style.display = 'block';
-                cargar(); // Recargar datos USOPEN
+                cargar(); 
             }
             else if (tabId === 'sugerencias-usopen') {
                 window.currentMode = 'USOPEN';
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
-                // MODIFICADO: Forzar recarga de datos USOPEN para evitar contaminación con RG
                 cargar();
-                if (typeof window.renderSugerenciasLogic === 'function') {
-                    window.renderSugerenciasLogic();
+                // MODIFICADO: Ejecuta el disparador específico de la carta USOPEN sin pisar la de RG
+                if (typeof window.renderCartaUSOPEN === 'function') {
+                    window.renderCartaUSOPEN();
                 }
             }
             else if (tabId === 'pro') {
