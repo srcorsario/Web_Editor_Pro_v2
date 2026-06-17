@@ -2,7 +2,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.35'; // Versión incrementada por corrección de carga
+window.APP_VERSIONS.app = '1.0.36'; // Versión incrementada por corrección crítica
 
 // NUEVO: Variable global para controlar el torneo activo
 window.currentMode = 'RG'; // Por defecto RG
@@ -79,6 +79,52 @@ function extraerJSON(texto) {
     throw new Error("No se encontró un JSON válido en la respuesta de la IA.");
 }
 
+// --- FUNCIÓN RENDERIZAR (FALTANTE Y RECONSTRUIDA) ---
+function renderizar() {
+    // MODIFICADO: Seleccionar contenedor correcto según modo
+    const editorContainerId = window.currentMode === 'USOPEN' ? 'editor-dinamico-usopen' : 'editor-dinamico';
+    const editorElement = document.getElementById(editorContainerId);
+    if (!editorElement) return;
+
+    let h = "";
+    datosLocales.sort((a, b) => a.id - b.id);
+    
+    ESTRUCTURA.forEach(cat => {
+        const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
+        if (platos.length === 0) return;
+        
+        h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
+        platos.forEach((p) => {
+            let htmlImagenPC = p.imagen ? `<span class="tag-imagen">📷 ${p.imagen}</span>` : "";
+            let htmlCarpetaPC = p.carpeta ? `<span class="tag-carpeta">${p.carpeta}</span>` : "";
+            const nombreLimpio = desglosarNombre(p.es).nombre;
+            
+            h += `<div class="plato-item">
+                <div class="plato-orden-btns">
+                    <button class="btn-orden" onclick="moverPlato(${p.id}, 'subir')">▲</button>
+                    <button class="btn-orden" onclick="moverPlato(${p.id}, 'bajar')">▼</button>
+                </div>
+                <div class="plato-info">
+                    <span class="plato-nombre">${nombreLimpio}</span>
+                    <div style="font-size: 0.7rem; color: #7f8c8d; margin-top: 4px; display: flex; gap: 10px; align-items: center;">${htmlCarpetaPC} ${htmlImagenPC}</div>
+                </div>
+                <div class="plato-meta-footer">
+                    <div><small>ID ${p.id} | ${p.precio}€</small></div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button class="btn-config" onclick="abrirEditor(${p.id})">⚙️</button>
+                        <label class="switch-container">
+                            <input type="checkbox" ${p.activa ? 'checked' : ''} onchange="toggleActivo(${p.id}, this.checked)">
+                            <span class="slider-switch"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>`;
+        });
+        h += `</div>`;
+    });
+    editorElement.innerHTML = h;
+}
+
 // --- FUNCIÓN CARGAR (FALTANTE) ---
 async function cargar() {
     try {
@@ -127,6 +173,7 @@ async function cargar() {
         renderizar();
         generarMenuAgrupado();
     } catch (e) { 
+        console.error("Error en cargar:", e);
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
     }
