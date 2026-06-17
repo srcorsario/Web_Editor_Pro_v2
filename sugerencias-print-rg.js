@@ -4,15 +4,6 @@
     const VERSION = "v2.2.1-RG";
     console.log(`%c[Editor Pro] [Sugerencias RG] Inicializado ${VERSION}`, "color: #e05a2b; font-weight: bold;");
 
-    // Inyección limpia y segura en la cabecera
-    const intv = setInterval(() => {
-        const header = document.querySelector('header .text-xs') || document.getElementById('version-indicador-ui') || document.querySelector('.version-logs');
-        if (header && !header.textContent.includes('print-rg')) {
-            header.textContent += ` - sugerencias-print-rg.js ${VERSION}`;
-            clearInterval(intv);
-        }
-    }, 400);
-
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
@@ -57,16 +48,15 @@
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
 
+        // VARIABLE EXCLUSIVA RG: Leemos únicamente el disco duro aislado de la carta estándar
         let fuente = [];
-        if (typeof datosLocales !== 'undefined' && datosLocales && datosLocales.length > 0) {
-            fuente = datosLocales;
-        } else {
-            const backup = localStorage.getItem('csvData');
-            if (backup) { try { fuente = JSON.parse(backup); } catch(e) {} }
+        const backup = localStorage.getItem('csvData');
+        if (backup) { 
+            try { fuente = JSON.parse(backup); } catch(e) { console.error("Error RG parse", e); } 
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (csvData)...</div>`;
             return;
         }
 
@@ -160,7 +150,5 @@
     };
 
     window.renderCartaRG = renderCartaRG;
-
-    // Carga controlada al inicio
     setTimeout(renderCartaRG, 600);
 })();
