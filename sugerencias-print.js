@@ -1,27 +1,28 @@
 (function () {
     'use strict';
 
-    // VERSIÓN DEL COMPONENTE (Rompe cachés y visible en consola/interfaz)
-    const VERSION_SUGERENCIAS = "v2.1.6";
-    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #0d5c63; font-weight: bold;");
+    // VERSIÓN DEL COMPONENTE (Visible en desarrollo y cabecera)
+    const VERSION_SUGERENCIAS = "v2.1.7";
+    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #2563eb; font-weight: bold;");
 
     // Inyección visual en la cabecera de la UI si existe el contenedor de versiones
     const infoCabecera = document.getElementById('version-indicador-ui') || document.querySelector('.version-logs');
     if (infoCabecera) {
-        if (!document.getElementById('sugerencias-version-badge')) {
-            const tagVersion = document.createElement('span');
-            tagVersion.id = 'sugerencias-version-badge';
-            tagVersion.className = 'text-xs text-slate-400 ml-2';
-            tagVersion.innerText = `| Sugerencias: ${VERSION_SUGERENCIAS}`;
-            infoCabecera.appendChild(tagVersion);
-        }
+        const viejoBadge = document.getElementById('sugerencias-version-badge');
+        if (viejoBadge) viejoBadge.remove(); // Limpieza activa de versiones previas
+        
+        const tagVersion = document.createElement('span');
+        tagVersion.id = 'sugerencias-version-badge';
+        tagVersion.className = 'text-xs text-slate-400 ml-2';
+        tagVersion.innerText = `| Sugerencias: ${VERSION_SUGERENCIAS}`;
+        infoCabecera.appendChild(tagVersion);
     }
 
     const ALERGENOS_BASE_PATH = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
     stylePrint.innerHTML = `
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap');
         
         @page { 
             size: A4; 
@@ -132,7 +133,9 @@
             return;
         }
 
-        if (contenedor.children.length > 1 && contenedor.querySelector('.sugerencias-body')) {
+        // MODIFICADO: Solo abortamos si el contenedor YA contiene la estructura de la carta real dibujada (.sugerencias-body)
+        // Esto evita quedarse en blanco si la pestaña se crea inicialmente vacía por el layout base de la app.
+        if (contenedor.querySelector('.sugerencias-body')) {
             return;
         }
 
@@ -231,7 +234,6 @@
         cargarCartaPorModo(modoActual);
     }
 
-    // CORREGIDO: Espaciado "const hasRG" arreglado de raíz para erradicar el ReferenceError en Firefox/Opera/Chrome.
     const observadorInstante = new MutationObserver((mutations) => {
         let debaRenderizar = false;
         
@@ -289,6 +291,7 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
+    // Forzamos hidratación inicial en paralelo limpia de ambos canales
     cargarCartaPorModo('RG');
     cargarCartaPorModo('USOPEN');
 })();
