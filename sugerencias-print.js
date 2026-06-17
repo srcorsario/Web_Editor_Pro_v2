@@ -31,7 +31,7 @@
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
         
         .sugerencias-logo-img { width: 200px !important; height: auto !important; }
-        /* NUEVO: Escala unificada idéntica a logo RG_REST / sugerencias-logo-img */
+        /* MODIFICADO: Escala unificada idéntica a logo RG_REST / sugerencias-logo-img */
         .sugerencias-header-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         
         .sugerencias-body {
@@ -166,7 +166,6 @@
             return; 
         }
         
-        // MODIFICADO: Seleccionar contenedor correcto según el modo actual
         const contenedorId = window.currentMode === 'USOPEN' ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
         const contenedor = document.getElementById(contenedorId);
         
@@ -200,18 +199,17 @@
             }
         });
 
-        // NUEVO: Usar logos específicos si estamos en UsOpen o RG
         const isUsOpen = window.currentMode === 'USOPEN';
         const LOGO_URL = isUsOpen ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/US_Open_%28logo%29.svg/1200px-US_Open_%28logo%29.svg.png' : 'https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';
         
         const QR_URL = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
         
-        // MODIFICADO: Añadido manejador defensivo onerror para evitar el icono de imagen no cargada si falla de forma local en la pestaña 5
         const HEADER_TEXT_URL = isUsOpen ? 'USOPEN_REST.png' : 'https://z-cdn-media.chatglm.cn/files/ea3128c5-540d-482e-adee-1ecbc193dd9c.png?auth_key=1881116219-cf95c1daa2014b019656762380eb6c80-0-8816330462d4295fd9dfe95d1cfab6e5';
-        const TITLE_TEXT = isUsOpen ? 'SUGERENCIAS DEL DIA' : 'SUGERENCIAS DEL CHEF';
-        const SUBTITLE_TEXT = isUsOpen ? "DAILY SUGGESTIONS" : "CHEF'S SUGGESTIONS";
+        
+        // MODIFICADO: Textos estandarizados e idénticos en ambos modos según requerimiento directo
+        const TITLE_TEXT = 'SUGERENCIAS DEL CHEF';
+        const SUBTITLE_TEXT = "CHEF'S SUGGESTIONS";
 
-        // MODIFICADO: Sufijo para IDs únicos y evitar conflictos entre RG y USOpen
         const modeSuffix = isUsOpen ? 'usopen' : 'rg';
         const toggleQrId = `toggle-qr-sugerencias-${modeSuffix}`;
         const imgQrId = `img-qr-sugerencias-${modeSuffix}`;
@@ -228,7 +226,6 @@
         `;
         
         if (HEADER_TEXT_URL) {
-            // MODIFICADO: Se añade la clase .sugerencias-header-img para control de escala y un condicional defensivo onerror para ocultar o reemplazar elegantemente si la ruta local no resuelve en la Hoja 5.
             html += `
             <div class="sugerencias-subheader">
                 <img src="${HEADER_TEXT_URL}" class="sugerencias-header-img" onerror="this.style.opacity='0'; this.style.height='0px'; console.warn('No se pudo cargar la imagen local del encabezado.');">
@@ -285,7 +282,6 @@
         const toggleQrCheckbox = document.getElementById(toggleQrId);
         const imgQr = document.getElementById(imgQrId);
         if (toggleQrCheckbox && imgQr) {
-            // Limpiar eventos previos para evitar duplicados si se recarga
             toggleQrCheckbox.replaceWith(toggleQrCheckbox.cloneNode(true));
             const newToggle = document.getElementById(toggleQrId);
             
@@ -296,7 +292,6 @@
     }
 
     window.imprimirSugerenciasA4 = function() {
-        // MODIFICADO: Buscar el contenedor correcto
         const contenedorId = window.currentMode === 'USOPEN' ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
         const contenedor = document.getElementById(contenedorId);
         
@@ -341,7 +336,6 @@
                     .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
                     .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
                     .sugerencias-logo-img { width: 200px !important; height: auto !important; }
-                    /* MODIFICADO: Inyección explícita de escala en el sub-documento A4 */
                     .sugerencias-header-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
                     
                     .sugerencias-body {
@@ -404,11 +398,8 @@
         printWindow.document.close();
     };
 
-    // Exponer la función para que pueda ser llamada desde switchTab
     window.renderSugerenciasLogic = cargarCarta;
-    // Mantener compatibilidad con llamadas antiguas
     window.renderizarSugerencias = cargarCarta;
 
-    // Esperar a que el DOM esté listo y datos cargados
     cargarCarta();
 })();
