@@ -2,7 +2,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.38'; // Versión corregida con blindaje y excepciones de bodega
+window.APP_VERSIONS.app = '1.0.39'; // Versión corregida con blindaje y excepciones de bodega
 
 // NUEVO: Variable global para controlar el torneo activo
 window.currentMode = 'RG'; // Por defecto RG
