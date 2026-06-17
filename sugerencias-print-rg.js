@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.1-RG";
+    const VERSION = "v2.2.2-RG";
     console.log(`%c[Editor Pro] [Sugerencias RG] Inicializado ${VERSION}`, "color: #e05a2b; font-weight: bold;");
 
     const PATH_ALERGENOS = 'imagenes/alergenos/';
@@ -44,11 +44,24 @@
     `;
     document.head.appendChild(stylePrint);
 
+    // Función segura para extraer nombres mitigando cualquier error fatal
+    function obtenerNombreSeguro(campoTexto) {
+        if (!campoTexto) return '';
+        try {
+            if (typeof desglosarNombre === 'function') {
+                const res = desglosarNombre(campoTexto);
+                if (res && res.nombre) return res.nombre;
+            }
+        } catch (e) {
+            console.warn("Fallo controlado en desglosarNombre:", e);
+        }
+        return campoTexto; // Fallback: si falla, devuelve el string entero original
+    }
+
     function renderCartaRG() {
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
 
-        // Lectura híbrida: localStorage primero, memoria volátil viva como alternativa directa
         let fuente = [];
         const backup = localStorage.getItem('csvData');
         if (backup) { 
@@ -62,13 +75,14 @@
             return;
         }
 
-        const platos = fuente.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
+        const platos = fuente.filter(p => p && p.activa && p.id >= 12000 && p.id <= 12999);
         let entrantes = [], principales = [], postres = [], vinos = [];
 
         platos.forEach(p => {
-            const id = p.id;
-            const nombreEs = desglosarNombre(p.es).nombre.toLowerCase();
-            if (id === 12990 || (nombreEs.includes('vino') && !nombreEs.includes('copa') && !nombreEs.includes('vinagreta'))) {
+            const id = parseInt(p.id, 10);
+            const nombreEsBajo = obtenerNombreSeguro(p.es).toLowerCase();
+            
+            if (id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta'))) {
                 vinos.push(p);
             } else if (id >= 12100 && id <= 12399) {
                 entrantes.push(p);
@@ -105,8 +119,8 @@
                 h += `
                     <div class="sugerencias-plato">
                         <div class="sugerencias-plato-nombres">
-                            <span class="sugerencias-nombre-es">${desglosarNombre(p.es).nombre}</span>
-                            <span class="sugerencias-nombre-en">${desglosarNombre(p.en).nombre}</span>
+                            <span class="sugerencias-nombre-es">${obtenerNombreSeguro(p.es)}</span>
+                            <span class="sugerencias-nombre-en">${obtenerNombreSeguro(p.en)}</span>
                             ${iconsHtml}
                         </div>
                         <div class="sugerencias-puntos"></div>
