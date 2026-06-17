@@ -1,19 +1,57 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.0-RG";
+    const VERSION = "v2.2.1-RG";
     console.log(`%c[Editor Pro] [Sugerencias RG] Inicializado ${VERSION}`, "color: #e05a2b; font-weight: bold;");
 
-    // Inyección limpia en la cabecera
+    // Inyección limpia y segura en la cabecera
     const intv = setInterval(() => {
         const header = document.querySelector('header .text-xs') || document.getElementById('version-indicador-ui') || document.querySelector('.version-logs');
         if (header && !header.textContent.includes('print-rg')) {
             header.textContent += ` - sugerencias-print-rg.js ${VERSION}`;
             clearInterval(intv);
         }
-    }, 300);
+    }, 400);
 
     const PATH_ALERGENOS = 'imagenes/alergenos/';
+
+    const stylePrint = document.createElement('style');
+    stylePrint.innerHTML = `
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap');
+        @page { size: A4; margin: 0; }
+        .sugerencias-panel { 
+            background: #ffffff !important; padding: 25px 35px !important; width: 210mm !important; 
+            min-height: 297mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important;
+            box-sizing: border-box !important; display: flex !important; flex-direction: column !important;
+        }
+        .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 10px !important; position: relative !important; }
+        .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 3px !important; }
+        .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
+        .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
+        .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
+        .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
+        .sugerencias-body { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; }
+        .sugerencias-seccion { margin-bottom: 15px !important; }
+        .sugerencias-seccion-titulo { font-size: 0.85rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
+        .sugerencias-seccion-vinos { margin-top: auto !important; }
+        .sugerencias-body.no-postres .sugerencias-seccion-principales { margin-top: auto !important; margin-bottom: auto !important; }
+        .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 6px !important; width: 100% !important; }
+        .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
+        .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; }
+        .sugerencias-nombre-en { font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; }
+        .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; margin-top: 2px !important; align-items: center !important; }
+        .sugerencias-alergeno-icon { display: inline-block !important; width: 20px !important; height: 20px !important; object-fit: contain !important; vertical-align: middle !important; }
+        .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
+        .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
+        .sugerencias-footer { margin-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; }
+        .sugerencias-aviso { font-size: 0.7rem !important; color: #64748b !important; max-width: 60% !important; line-height: 1.4 !important;}
+        .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 6px !important; }
+        .sugerencias-qr-img { width: 130px !important; height: 130px !important; object-fit: contain !important; }
+        .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
+        .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
+        @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle { display: none !important; } }
+    `;
+    document.head.appendChild(stylePrint);
 
     function renderCartaRG() {
         const contenedor = document.getElementById('sugerencias-contenido');
@@ -28,11 +66,10 @@
         }
 
         if (!fuente || fuente.length === 0) {
-            setTimeout(renderCartaRG, 200);
+            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar...</div>`;
             return;
         }
 
-        // Filtro estricto ID (12000-12999) e individuales para RG
         const platos = fuente.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
         let entrantes = [], principales = [], postres = [], vinos = [];
 
@@ -105,26 +142,25 @@
 
         contenedor.innerHTML = html;
 
-        document.getElementById('toggle-qr-rg').addEventListener('change', function() {
-            document.getElementById('img-qr-rg').style.display = this.checked ? 'block' : 'none';
-        });
-    }
-
-    // Observer exclusivo de escucha para el contenedor RG
-    const obs = new MutationObserver(() => {
-        if (document.getElementById('sugerencias-contenido')) {
-            renderCartaRG();
+        const toggle = document.getElementById('toggle-qr-rg');
+        if(toggle) {
+            toggle.addEventListener('change', function() {
+                const img = document.getElementById('img-qr-rg');
+                if(img) img.style.display = this.checked ? 'block' : 'none';
+            });
         }
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
+    }
 
     window.imprimirSugerenciasRG = function() {
         const cont = document.getElementById('sugerencias-contenido');
         if (!cont) return;
         const pWin = window.open('', '_blank', 'width=800,height=1000');
-        pWin.document.write(`<html><head><title>Sugerencias RG</title><style>${document.head.querySelector('style').innerHTML}</style></head><body><div class="sugerencias-panel">${cont.innerHTML}</div><script>setTimeout(() => { window.print(); window.close(); }, 500);<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias RG</title><style>${stylePrint.innerHTML}</style></head><body><div class="sugerencias-panel">${cont.innerHTML}</div><script>setTimeout(() => { window.print(); window.close(); }, 500);<\/script></body></html>`);
         pWin.document.close();
     };
 
-    renderCartaRG();
+    window.renderCartaRG = renderCartaRG;
+
+    // Carga controlada al inicio
+    setTimeout(renderCartaRG, 600);
 })();
