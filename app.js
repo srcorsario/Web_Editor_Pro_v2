@@ -2,7 +2,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.37'; // Versión corregida para window.datosLocales
+window.APP_VERSIONS.app = '1.0.38'; // Versión corregida con blindaje y excepciones de bodega
 
 // NUEVO: Variable global para controlar el torneo activo
 window.currentMode = 'RG'; // Por defecto RG
@@ -67,7 +67,7 @@ function extraerJSON(texto) {
             if (braceCount === 0) startIndex = i;
             braceCount++;
         } else if (limpio[i] === '}') {
-            box_count = braceCount--;
+            braceCount--;
             if (braceCount === 0 && startIndex !== -1) {
                 const jsonString = limpio.substring(startIndex, i + 1);
                 try {
@@ -208,23 +208,43 @@ function abrirEditor(id, esNuevo = false) {
     let p = esNuevo ? datosTempNuevo : window.datosLocales.find(x => x.id === id);
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
-    const esVino = (id >= 13000);
+    
+    // DETECCIÓN UNIFICADA DE BODEGA/VINOS (Incluye la excepción 12990 y el filtro por nombre)
+    const nombreLower = (p && p['es']) ? p['es'].toLowerCase() : "";
+    const esVino = (id >= 13000) || (id === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
+    
     const esCroqueta = (id >= 12100 && id <= 12299);
     const esCroquetaVeg = (id >= 12200 && id <= 12299);
     
-    document.getElementById('label-uvas').innerText = esVino ? "Nombres y Detalles del Plato / Vino (Uvas)" : "Nombres y Detalles del Plato";
+    // BLINDAJE INTERACTIVO: Control de nulos para 'label-uvas'
+    const labelUvas = document.getElementById('label-uvas');
+    if (labelUvas) {
+        labelUvas.innerText = esVino ? "Nombres y Detalles del Plato / Vino (Uvas)" : "Nombres y Detalles del Plato";
+    }
     
     const dataEs = desglosarNombre(p['es'] || "");
-    document.getElementById('edit-es').value = esVino ? formatWineName(dataEs.nombre) : dataEs.nombre;
+    const inputEditEs = document.getElementById('edit-es');
+    if (inputEditEs) {
+        inputEditEs.value = esVino ? formatWineName(dataEs.nombre) : dataEs.nombre;
+    }
+    
     const inputEsUvas = document.getElementById('edit-es-uvas');
-    inputEsUvas.value = dataEs.uvas;
-    inputEsUvas.style.display = esVino ? "block" : "none";
+    if (inputEsUvas) {
+        inputEsUvas.value = dataEs.uvas;
+        inputEsUvas.style.display = esVino ? "block" : "none";
+    }
 
     const dataEn = desglosarNombre(p['en'] || "");
-    document.getElementById('edit-en').value = esVino ? formatWineName(dataEn.nombre) : dataEn.nombre;
+    const inputEditEn = document.getElementById('edit-en');
+    if (inputEditEn) {
+        inputEditEn.value = esVino ? formatWineName(dataEn.nombre) : dataEn.nombre;
+    }
+    
     const inputEnUvas = document.getElementById('edit-en-uvas');
-    inputEnUvas.value = dataEn.uvas;
-    inputEnUvas.style.display = esVino ? "block" : "none";
+    if (inputEnUvas) {
+        inputEnUvas.value = dataEn.uvas;
+        inputEnUvas.style.display = esVino ? "block" : "none";
+    }
     
     let htmlRestoLangs = `<div class="langs-fluid-container">`;
     IDIOMAS_ORDEN.forEach(l => {
@@ -242,10 +262,15 @@ function abrirEditor(id, esNuevo = false) {
             </div>`;
     });
     htmlRestoLangs += `</div>`;
-    document.getElementById('contenedor-resto-idiomas').innerHTML = htmlRestoLangs;
     
-    document.getElementById('edit-precio').value = p.precio;
-    document.getElementById('edit-imagen').value = p.imagen;
+    const contenedorResto = document.getElementById('contenedor-resto-idiomas');
+    if (contenedorResto) contenedorResto.innerHTML = htmlRestoLangs;
+    
+    const inputPrecio = document.getElementById('edit-precio');
+    if (inputPrecio) inputPrecio.value = p.precio;
+    
+    const inputImagen = document.getElementById('edit-imagen');
+    if (inputImagen) inputImagen.value = p.imagen;
     
     const actuales = (p.alergenos || "").split(',').map(s => s.trim().toUpperCase());
     let alergenosHtml = "";
@@ -258,7 +283,9 @@ function abrirEditor(id, esNuevo = false) {
             return `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">${a}</div>`;
         }).join('');
     }
-    document.getElementById('alergenos-grid').innerHTML = alergenosHtml;
+    
+    const gridAlergenos = document.getElementById('alergenos-grid');
+    if (gridAlergenos) gridAlergenos.innerHTML = alergenosHtml;
     
     let croquetasHtml = "";
     if (esCroqueta) {
@@ -286,7 +313,9 @@ function abrirEditor(id, esNuevo = false) {
 
         croquetasHtml += `</div></div>`;
     }
-    document.getElementById('contenedor-croquetas').innerHTML = croquetasHtml;
+    
+    const contenedorCroquetas = document.getElementById('contenedor-croquetas');
+    if (contenedorCroquetas) contenedorCroquetas.innerHTML = croquetasHtml;
 
     if (esCroqueta && p['es']) {
         const todosSabores = [...CROQUETAS_CONFIG.carne, ...CROQUETAS_CONFIG.pescado, ...CROQUETAS_CONFIG.vegetariana];
@@ -301,7 +330,8 @@ function abrirEditor(id, esNuevo = false) {
     }
     
     comprobarRequisitosTraduccion();
-    document.getElementById('modal-editor').style.display = 'block';
+    const modalEditor = document.getElementById('modal-editor');
+    if (modalEditor) modalEditor.style.display = 'block';
 }
 
 function actualizarNombreCroquetas() {
@@ -309,7 +339,8 @@ function actualizarNombreCroquetas() {
     const seleccionadas = Array.from(document.querySelectorAll('.croqueta-btn.selected')).map(el => el.innerText.trim());
     
     if (seleccionadas.length === 0) {
-        document.getElementById('edit-es').value = "";
+        const inputEditEs = document.getElementById('edit-es');
+        if (inputEditEs) inputEditEs.value = "";
         comprobarRequisitosTraduccion();
         return;
     }
@@ -322,19 +353,32 @@ function actualizarNombreCroquetas() {
     let titulo = esCroquetaVeg ? "Croquetas Vegetarianas:" : "Surtido de Croquetas:";
     if (!esCroquetaVeg && soloVegetarianas) titulo = "Croquetas Vegetarianas:";
 
-    document.getElementById('edit-es').value = `${titulo} ${textoCroquetas}`;
+    const inputEditEs = document.getElementById('edit-es');
+    if (inputEditEs) inputEditEs.value = `${titulo} ${textoCroquetas}`;
     comprobarRequisitosTraduccion();
 }
 
 function comprobarRequisitosTraduccion() {
-    const esValido = document.getElementById('edit-es').value.trim() !== "" && document.getElementById('edit-en').value.trim() !== "";
-    document.getElementById('btn-autotraducir').disabled = !esValido;
+    const editEs = document.getElementById('edit-es');
+    const editEn = document.getElementById('edit-en');
+    const btnAuto = document.getElementById('btn-autotraducir');
+    
+    if (editEs && editEn && btnAuto) {
+        const esValido = editEs.value.trim() !== "" && editEn.value.trim() !== "";
+        btnAuto.disabled = !esValido;
+    }
 }
 
 async function generarTraduccionEN() {
-    const nombreEs = document.getElementById('edit-es').value.trim();
-    const esVino = (platoEditandoId >= 13000);
-    const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
+    const editEs = document.getElementById('edit-es');
+    const nombreEs = editEs ? editEs.value.trim() : "";
+    
+    // DETECCIÓN UNIFICADA DE BODEGA/VINOS
+    const nombreLower = nombreEs.toLowerCase();
+    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
+    
+    const editEsUvas = document.getElementById('edit-es-uvas');
+    const uvasEs = (esVino && editEsUvas) ? editEsUvas.value.trim() : "";
     
     if (!nombreEs) {
         alert("❌ Debes introducir primero el nombre en Español.");
@@ -422,7 +466,7 @@ async function generarTraduccionEN() {
 function abrirModalTraduccionEN(opciones) {
     const container = document.getElementById('opciones-en-container');
     const textarea = document.getElementById('editar-opcion-en');
-    textarea.value = "";
+    if (textarea) textarea.value = "";
     opcionesENActuales = [];
 
     let html = "";
@@ -445,26 +489,34 @@ function abrirModalTraduccionEN(opciones) {
         }
     }
 
-    container.innerHTML = html;
-    document.getElementById('modal-traduccion-en').style.display = 'flex';
+    if (container) container.innerHTML = html;
+    const modalTraduccion = document.getElementById('modal-traduccion-en');
+    if (modalTraduccion) modalTraduccion.style.display = 'flex';
 }
 
 function seleccionarOpcionEN(elemento, index) {
     document.querySelectorAll('.opcion-en-btn').forEach(el => el.classList.remove('selected'));
     elemento.classList.add('selected');
-    document.getElementById('editar-opcion-en').value = opcionesENActuales[index];
+    const textarea = document.getElementById('editar-opcion-en');
+    if (textarea) textarea.value = opcionesENActuales[index];
 }
 
 function confirmarTraduccionEN() {
-    const textoFinal = document.getElementById('editar-opcion-en').value.trim();
+    const textarea = document.getElementById('editar-opcion-en');
+    const textoFinal = textarea ? textarea.value.trim() : "";
     if (!textoFinal) {
         alert("❌ Selecciona una opción o escribe la traducción antes de confirmar.");
         return;
     }
     
+    // DETECCIÓN UNIFICADA DE BODEGA/VINOS Basada en la traducción o el estado actual
+    let p = window.datosLocales.find(x => x.id === platoEditandoId) || {};
+    const nombreLower = (p['es'] || "").toLowerCase();
+    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
+
     const desglosado = desglosarNombre(textoFinal);
-    const esVino = (platoEditandoId >= 13000);
-    document.getElementById('edit-en').value = esVino ? formatWineName(desglosado.nombre) : desglosado.nombre;
+    const editEn = document.getElementById('edit-en');
+    if (editEn) editEn.value = esVino ? formatWineName(desglosado.nombre) : desglosado.nombre;
     
     const inputEnUvas = document.getElementById('edit-en-uvas');
     if (inputEnUvas && inputEnUvas.style.display !== "none") {
@@ -472,31 +524,43 @@ function confirmarTraduccionEN() {
     }
     
     cerrarModalTraduccionEN();
-
     comprobarRequisitosTraduccion();
 }
 
 function cerrarModalTraduccionEN() {
-    document.getElementById('modal-traduccion-en').style.display = 'none';
+    const modalTraduccion = document.getElementById('modal-traduccion-en');
+    if (modalTraduccion) modalTraduccion.style.display = 'none';
 }
 
 async function ejecutarTraduccionAutomatica() {
     const btn = document.getElementById('btn-autotraducir');
-    const originalText = btn.innerText;
-    btn.innerText = "✨ Traduciendo con Gemini 2.5...";
-    btn.disabled = true;
+    const originalText = btn ? btn.innerText : "";
+    if (btn) {
+        btn.innerText = "✨ Traduciendo con Gemini 2.5...";
+        btn.disabled = true;
+    }
     
-    const nombreEs = document.getElementById('edit-es').value.trim();
-    const nombreEn = document.getElementById('edit-en').value.trim();
-    const esVino = (platoEditandoId >= 13000);
-    const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
-    const uvasEn = esVino ? document.getElementById('edit-en-uvas').value.trim() : "";
+    const editEs = document.getElementById('edit-es');
+    const editEn = document.getElementById('edit-en');
+    const nombreEs = editEs ? editEs.value.trim() : "";
+    const nombreEn = editEn ? editEn.value.trim() : "";
+    
+    // DETECCIÓN UNIFICADA DE BODEGA/VINOS
+    const nombreLower = nombreEs.toLowerCase();
+    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
+    
+    const editEsUvas = document.getElementById('edit-es-uvas');
+    const editEnUvas = document.getElementById('edit-en-uvas');
+    const uvasEs = (esVino && editEsUvas) ? editEsUvas.value.trim() : "";
+    const uvasEn = (esVino && editEnUvas) ? editEnUvas.value.trim() : "";
     const keys = getKeys();
     
     if (keys.length === 0) {
         alert("❌ No hay API Keys de Gemini configuradas. Añade al menos una en el panel superior.");
-        btn.innerText = originalText;
-        btn.disabled = false;
+        if (btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
         return;
     }
     
@@ -573,18 +637,25 @@ async function ejecutarTraduccionAutomatica() {
         alert("❌ Error al traducir con Gemini.\nDetalles del error: " + ultimoError);
     }
     
-    btn.innerText = originalText;
-    btn.disabled = false;
+    if (btn) {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 function aplicarCambiosPlato() {
     let p = esNuevoPlato ? datosTempNuevo : window.datosLocales.find(x => x.id === platoEditandoId);
     if (esNuevoPlato) window.datosLocales.push(p);
     
-    const esVino = (platoEditandoId >= 13000);
+    // DETECCIÓN UNIFICADA DE BODEGA/VINOS Al Guardar
+    const inputEditEs = document.getElementById('edit-es');
+    const nombreLower = inputEditEs ? inputEditEs.value.toLowerCase() : "";
+    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
 
     IDIOMAS_ORDEN.forEach(l => {
-        let nom = superLimpiar(document.getElementById(`edit-${l}`).value);
+        const inputField = document.getElementById(`edit-${l}`);
+        let nom = inputField ? superLimpiar(inputField.value) : "";
+        
         const inputUva = document.getElementById(`edit-${l}-uvas`);
         const uvas = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
         
@@ -593,11 +664,14 @@ function aplicarCambiosPlato() {
         p[l] = uvas ? `${nom} // ${uvas}` : nom;
     });
     
-    let preVal = document.getElementById('edit-precio').value || "0.00";
+    const inputPrecio = document.getElementById('edit-precio');
+    let preVal = inputPrecio ? inputPrecio.value || "0.00" : "0.00";
     p.precio = parseFloat(preVal).toFixed(2);
     if(isNaN(p.precio)) p.precio = "0.00";
     
-    p.imagen = superLimpiar(document.getElementById('edit-imagen').value);
+    const inputImagen = document.getElementById('edit-imagen');
+    p.imagen = inputImagen ? superLimpiar(inputImagen.value) : "";
+    
     p.alergenos = Array.from(document.querySelectorAll('.alergeno-btn.selected')).map(el => {
         let rawText = el.innerText.trim();
         let spaceIdx = rawText.indexOf(' ');
@@ -666,9 +740,11 @@ function prepararNuevoPlato(baseId, folder) {
 
 async function enviarAlExcel() {
     const btn = document.querySelector('.btn-guardar-main');
-    const textoOriginal = btn.innerText;
-    btn.innerText = "⏳ SUBIENDO Y ORDENANDO COLUMNAS..."; 
-    btn.disabled = true;
+    const textoOriginal = btn ? btn.innerText : "";
+    if (btn) {
+        btn.innerText = "⏳ SUBIENDO Y ORDENANDO COLUMNAS..."; 
+        btn.disabled = true;
+    }
     
     if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
         UI.log('[Editor] Compilando matriz y enviando cambios distribuidos a Google Sheets...');
@@ -715,8 +791,10 @@ async function enviarAlExcel() {
     } catch (e) { 
         alert("Error al intentar impactar los datos en Google Sheets."); 
         console.error("❌ [Editor-Debug] Error de red: ", e);
-        btn.disabled = false; 
-        btn.innerText = textoOriginal; 
+        if (btn) {
+            btn.disabled = false; 
+            btn.innerText = textoOriginal; 
+        }
     }
 }
 
@@ -725,8 +803,15 @@ function toggleActivo(id, v) {
     if(p) p.activa = v; 
 }
 
-function abrirSelector() { document.getElementById('modal-selector').style.display = 'block'; }
-function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
+function abrirSelector() { 
+    const modalSelector = document.getElementById('modal-selector');
+    if (modalSelector) modalSelector.style.display = 'block'; 
+}
+
+function cerrarModal(id) { 
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none'; 
+}
 
 // Inicialización automática al cargar la página
 cargar();
