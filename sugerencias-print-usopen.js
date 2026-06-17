@@ -48,7 +48,7 @@
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
 
-        // VARIABLES EXCLUSIVAS USOPEN: Buscamos en todas las claves posibles de almacenamiento dedicadas a USOPEN
+        // Lectura híbrida exhaustiva: localStorage multiclave o estados globales dinámicos de USOpen
         let fuente = [];
         const backupUSOPEN = localStorage.getItem('csvData_USOPEN') || 
                              localStorage.getItem('csvDataUSOPEN') || 
@@ -56,10 +56,14 @@
 
         if (backupUSOPEN) { 
             try { fuente = JSON.parse(backupUSOPEN); } catch(e) { console.error("Error USOPEN parse", e); } 
+        } else if (window.datosLocales && window.currentMode === 'USOPEN') {
+            fuente = window.datosLocales;
+        } else if (window.csvDataUSOPEN) {
+            fuente = window.csvDataUSOPEN;
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta UsOpen en localStorage (csvData_USOPEN)...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta UsOpen (vuelve a la Pestaña 4 un segundo para activar la memoria)...</div>`;
             return;
         }
 
