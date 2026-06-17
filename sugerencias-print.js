@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    // NUEVO: Ruta base para localizar las imágenes de los alérgenos.
+    // Ruta base para localizar las imágenes de los alérgenos.
     const ALERGENOS_BASE_PATH = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
@@ -156,56 +156,44 @@
         return iconsHtml;
     }
 
-    function cargarCarta() {
-        // MODIFICADO: Leemos dinámicamente el modo actual en el instante exacto de ejecución del render
-        const isUsOpen = window.currentMode === 'USOPEN';
+    // MODIFICADO: Ahora pasamos explícitamente el modo por parámetro para romper la dependencia de estados cruzados reactivos de la UI
+    function cargarCartaPorModo(modoObjetivo) {
+        const isUsOpen = modoObjetivo === 'USOPEN';
         let fuenteDatos = [];
 
-        // MODIFICADO: Forzamos la separación total e inequívoca de orígenes según el torneo activo
+        // MODIFICADO: Aislamiento absoluto del set de datos. Si no hay datos en memoria por no pisar la pestaña 4, se extrae directo del Storage de respaldo de forma síncrona
         if (isUsOpen) {
             if (window.activeStateContainer && window.activeStateContainer.csvDataUSOPEN) {
                 fuenteDatos = window.activeStateContainer.csvDataUSOPEN;
-            } else if (localStorage.getItem('csvData_USOPEN')) {
-                try {
-                    fuenteDatos = JSON.parse(localStorage.getItem('csvData_USOPEN'));
-                } catch(e) {
-                    console.error("Error al desempaquetar lote USOPEN:", e);
+            } else {
+                const backupUSOpen = localStorage.getItem('csvData_USOPEN');
+                if (backupUSOpen) {
+                    try {
+                        fuenteDatos = JSON.parse(backupUSOpen);
+                    } catch(e) { console.error(e); }
                 }
             }
         } else {
-            // Roland Garros / Por defecto
             if (typeof datosLocales !== 'undefined') {
                 fuenteDatos = datosLocales;
-            } else if (localStorage.getItem('csvData')) {
-                try {
-                    fuenteDatos = JSON.parse(localStorage.getItem('csvData'));
-                } catch(e) {
-                    console.error("Error al desempaquetar lote RG:", e);
+            } else {
+                const backupRG = localStorage.getItem('csvData');
+                if (backupRG) {
+                    try {
+                        fuenteDatos = JSON.parse(backupRG);
+                    } catch(e) { console.error(e); }
                 }
             }
         }
 
-        const statusCarga = document.getElementById('status-carga');
-        const isLoaded = statusCarga && statusCarga.innerText.includes('✅');
-
-        if (!fuenteDatos || fuenteDatos.length === 0) { 
-            // Si la web acaba de cargar y no encuentra datos listos, espera un instante
-            if (!isLoaded) {
-                setTimeout(cargarCarta, 300); 
-                return;
-            }
-        }
-        
         const contenedorId = isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
         const contenedor = document.getElementById(contenedorId);
-        
         if (!contenedor) return;
 
-        // Limpieza de seguridad del contenedor opuesto para evitar mezclas visuales
-        const contenedorOpuestoId = isUsOpen ? 'sugerencias-contenido' : 'sugerencias-contenido-usopen';
-        const contenedorOpuesto = document.getElementById(contenedorOpuestoId);
-        if (contenedorOpuesto && contenedorOpuesto.innerHTML !== '') {
-            contenedorOpuesto.innerHTML = ''; 
+        // Si la fuente sigue vacía porque la app no ha terminado su bootstrap inicial, reintentamos puntualmente
+        if (!fuenteDatos || fuenteDatos.length === 0) {
+            setTimeout(() => cargarCartaPorModo(modoObjetivo), 300);
+            return;
         }
 
         const platosActivos = fuenteDatos.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
@@ -313,6 +301,12 @@
                 imgQr.style.display = this.checked ? 'block' : 'none';
             });
         }
+    }
+
+    // MODIFICADO: Orquestador maestro inteligente. Renderiza la vista solicitada de forma asíncrona pero aislada.
+    function cargarCarta() {
+        const modoActual = window.currentMode || 'RG';
+        cargarCartaPorModo(modoActual);
     }
 
     window.imprimirSugerenciasA4 = function() {
@@ -426,5 +420,7 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
-    cargarCarta();
+    // MODIFICADO: Forzamos el renderizado en paralelo inicial de ambos contenedores para asegurar disponibilidad inmediata
+    cargarCartaPorModo('RG');
+    cargarCartaPorModo('USOPEN');
 })();
