@@ -1,12 +1,7 @@
-=========================================
-REPOSITORIO: Web_Editor_Pro_v2 (PRINCIPAL)
-ARCHIVO: sugerencias-print-rg.js
-=========================================
 (function () {
     'use strict';
 
     const VERSION = "v2.2.2-RG";
-    
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
@@ -43,24 +38,19 @@ ARCHIVO: sugerencias-print-rg.js
         .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
         
         .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
-        
         .sugerencias-qr-img { transition: opacity 0.3s; }
-        .sugerencias-qr-img:hover { opacity: 1.0; }
 
         .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
         @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper { display: none !important; } }
     `;
     document.head.appendChild(stylePrint);
 
-    // --- FUNCIÓN DE CONTEXTO: Compartido con app.js ---
     window.desglosarNombre = window.desglosarNombre || function(texto) { 
         if (!texto) return { nombre: "", uvas: "" };
         const partes = texto.split('//');
         return { nombre: partes[0] ? partes[0].trim() : "", uvas: partes[1] ? partes[1].trim() : "" };
     };
 
-    // --- FUNCIÓN TOGGLE QR (GLOBAL) ---
-    // MODIFICADO: Estructura corregida para soportar conmutación transparente sin URL errónea
     window.toggleQR = function(tipo, modo) {
         const img = document.getElementById(`img-qr-${modo}`);
         if (!img) return;
@@ -80,7 +70,6 @@ ARCHIVO: sugerencias-print-rg.js
         }
     };
 
-    // --- RENDERIZADO ---
     function renderCartaRG() {
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
@@ -88,7 +77,6 @@ ARCHIVO: sugerencias-print-rg.js
         let fuente = [];
         const backup = localStorage.getItem('csvData');
         
-        // MODIFICADO: Fallback robusto e integrado de obtención de datos
         if (backup) {
             try {
                 fuente = JSON.parse(backup);
@@ -100,11 +88,10 @@ ARCHIVO: sugerencias-print-rg.js
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-sugerencias-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
             return;
         }
 
-        // Filtrado por identificadores lógicos del rango 12000
         const platos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
         let entrantes = [], principales = [], postres = [], vinos = [];
 
@@ -172,7 +159,6 @@ ARCHIVO: sugerencias-print-rg.js
         html += renderCat("POSTRES / DESSERTS", postres, "sugerencias-seccion-postres");
         html += renderCat("BODEGA / WINE CELLAR", vinos, "sugerencias-seccion-vinos");
 
-        // MODIFICADO: Renderizado e inyección del panel interactivo de pie con selector de QR para RG (Pestaña 2)
         html += `
             </div>
             <div class="sugerencias-footer">
