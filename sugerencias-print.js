@@ -204,11 +204,15 @@
         
         const QR_URL = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
         
-        // Nota: La imagen de texto del header es específica de RG ("Roland Garros").
-        // Para UsOpen, usaré texto CSS simple o intentaré usar una genérica si no se proporciona.
-        const HEADER_TEXT_URL = isUsOpen ? '' : 'https://z-cdn-media.chatglm.cn/files/ea3128c5-540d-482e-adee-1ecbc193dd9c.png?auth_key=1881116219-cf95c1daa2014b019656762380eb6c80-0-8816330462d4295fd9dfe95d1cfab6e5';
+        // MODIFICADO: Usar imagen específica USOPEN_REST.png para el encabezado de UsOpen
+        const HEADER_TEXT_URL = isUsOpen ? 'USOPEN_REST.png' : 'https://z-cdn-media.chatglm.cn/files/ea3128c5-540d-482e-adee-1ecbc193dd9c.png?auth_key=1881116219-cf95c1daa2014b019656762380eb6c80-0-8816330462d4295fd9dfe95d1cfab6e5';
         const TITLE_TEXT = isUsOpen ? 'SUGERENCIAS DEL DIA' : 'SUGERENCIAS DEL CHEF';
         const SUBTITLE_TEXT = isUsOpen ? "DAILY SUGGESTIONS" : "CHEF'S SUGGESTIONS";
+
+        // MODIFICADO: Sufijo para IDs únicos y evitar conflictos entre RG y USOpen
+        const modeSuffix = isUsOpen ? 'usopen' : 'rg';
+        const toggleQrId = `toggle-qr-sugerencias-${modeSuffix}`;
+        const imgQrId = `img-qr-sugerencias-${modeSuffix}`;
 
         let html = `
             <button onclick="window.imprimirSugerenciasA4()" class="btn-imprimir-a4">🖨️ Imprimir en A4</button>
@@ -266,21 +270,21 @@
                 </div>
                 <div class="sugerencias-qr-container">
                     <label class="sugerencias-qr-toggle">
-                        <input type="checkbox" id="toggle-qr-sugerencias" checked> Mostrar QR
+                        <input type="checkbox" id="${toggleQrId}" checked> Mostrar QR
                     </label>
-                    <img src="${QR_URL}" class="sugerencias-qr-img" id="img-qr-sugerencias" alt="QR Menu">
+                    <img src="${QR_URL}" class="sugerencias-qr-img" id="${imgQrId}" alt="QR Menu">
                 </div>
             </div>
         `;
         
         contenedor.innerHTML = html;
 
-        const toggleQrCheckbox = document.getElementById('toggle-qr-sugerencias');
-        const imgQr = document.getElementById('img-qr-sugerencias');
+        const toggleQrCheckbox = document.getElementById(toggleQrId);
+        const imgQr = document.getElementById(imgQrId);
         if (toggleQrCheckbox && imgQr) {
             // Limpiar eventos previos para evitar duplicados si se recarga
             toggleQrCheckbox.replaceWith(toggleQrCheckbox.cloneNode(true));
-            const newToggle = document.getElementById('toggle-qr-sugerencias');
+            const newToggle = document.getElementById(toggleQrId);
             
             newToggle.addEventListener('change', function() {
                 imgQr.style.display = this.checked ? 'block' : 'none';
