@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.7-USOPEN";
+    const VERSION = "v2.2.8-USOPEN";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -20,7 +20,6 @@
         .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
         .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         
-        /* CUERPO FLEXIBLE REVISADO: Las categorías se auto-distribuyen de manera uniforme por la página */
         .sugerencias-body { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; }
         .sugerencias-seccion { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 15px !important; }
         .sugerencias-seccion-titulo { font-size: 0.85rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 10px !important; text-transform: uppercase !important; }
@@ -29,7 +28,12 @@
         .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
         .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; }
         .sugerencias-nombre-en { font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; }
-        .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 2px !important; align-items: center !important; }
+        
+        /* ESTILOS ESPECÍFICOS PARA LA LÍNEA DE UVAS/DETALLES SECUNDARIOS */
+        .sugerencias-detalles-uvas { display: block !important; font-size: 0.75rem !important; font-weight: normal !important; color: #475569 !important; margin-top: 1px !important; }
+        .sugerencias-detalles-uvas-en { display: block !important; font-size: 0.7rem !important; font-weight: normal !important; color: #64748b !important; font-style: italic !important; }
+
+        .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 3px !important; align-items: center !important; }
         .sugerencias-alergeno-icon { display: inline-block !important; width: 20px !important; height: 20px !important; object-fit: contain !important; vertical-align: middle !important; }
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
@@ -48,6 +52,18 @@
         @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper { display: none !important; } }
     `;
     document.head.appendChild(stylePrintUsOpen);
+
+    // ASEGURAMOS LA FUNCIÓN DE DESGLOSE NATIVA EN LA PESTAÑA 5 TAMBIÉN
+    if (!window.desglosarNombre) {
+        window.desglosarNombre = function(texto) { 
+            if (!texto) return { nombre: "", uvas: "" };
+            const partes = texto.split('//');
+            return { 
+                nombre: partes[0] ? partes[0].trim() : "", 
+                uvas: partes[1] ? partes[1].trim() : "" 
+            };
+        };
+    }
 
     function renderCartaUSOPEN() {
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
@@ -75,7 +91,7 @@
 
         platos.forEach(p => {
             const id = parseInt(p.id, 10);
-            const desgloseEs = window.desglosarNombre ? window.desglosarNombre(p.es) : { nombre: p.es || "" };
+            const desgloseEs = window.desglosarNombre(p.es);
             const nombreEsBajo = desgloseEs.nombre ? desgloseEs.nombre.toLowerCase() : "";
             
             if (id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta'))) {
@@ -113,15 +129,19 @@
                     iconsHtml = '<div class="sugerencias-alergenos">' + p.alergenos.split(',').map(a => `<img src="${PATH_ALERGENOS}${a.trim()}.webp" class="sugerencias-alergeno-icon" onerror="this.style.display='none'">`).join('') + '</div>';
                 }
                 
-                const objEs = window.desglosarNombre ? window.desglosarNombre(p.es) : { nombre: p.es || "" };
-                const objEn = window.desglosarNombre ? window.desglosarNombre(p.en) : { nombre: p.en || "" };
+                const objEs = window.desglosarNombre(p.es);
+                const objEn = window.desglosarNombre(p.en);
                 const precioFormateado = p.precio ? parseFloat(p.precio).toFixed(2) + '€' : '0.00€';
 
                 h += `
                     <div class="sugerencias-plato">
                         <div class="sugerencias-plato-nombres">
-                            <span class="sugerencias-nombre-es">${objEs.nombre} ${objEs.uvas ? '<span class="text-xs text-slate-500 font-normal">(' + objEs.uvas + ')</span>' : ''}</span>
-                            <span class="sugerencias-nombre-en">${objEn.nombre} ${objEn.uvas ? '<span class="text-xs text-slate-400 font-normal">(' + objEn.uvas + ')</span>' : ''}</span>
+                            <span class="sugerencias-nombre-es">${objEs.nombre}</span>
+                            ${objEs.uvas ? `<span class="sugerencias-detalles-uvas">${objEs.uvas}</span>` : ''}
+                            
+                            <span class="sugerencias-nombre-en">${objEn.nombre}</span>
+                            ${objEn.uvas ? `<span class="sugerencias-detalles-uvas-en">${objEn.uvas}</span>` : ''}
+                            
                             ${iconsHtml}
                         </div>
                         <div class="sugerencias-puntos"></div>
