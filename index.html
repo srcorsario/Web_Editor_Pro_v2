@@ -7,7 +7,7 @@
     <link rel="icon" href="setting.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -222,7 +222,7 @@
     <script src="sugerencias-print-usopen.js"></script>
 
     <script>
-        // Lógica de Pestañas (Tabs) Segura y Antibucle
+        // Lógica de Pestañas (Tabs) Corregida y Sincronizada
         function switchTab(tabId, btnElement) {
             // Ocultar todos los contenidos de pestaña de forma limpia
             document.querySelectorAll('.tab-content').forEach(el => {
@@ -230,7 +230,7 @@
                 el.style.display = 'none';
             });
             
-            // Desactivar todos los botones de la interfaz
+            // Desactivar botones de la interfaz
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             
             // Activar la pestaña y el botón actual seleccionado
@@ -241,7 +241,7 @@
             }
             if (btnElement) btnElement.classList.add('active');
 
-            // Asignación controlada de modos sin ejecuciones cíclicas en cascada
+            // Gestión de Entornos y Sincronización de Datos Forzada para evitar mezclar estados
             if (tabId === 'editor') {
                 window.currentMode = 'RG';
                 document.querySelector('.btn-add-float').style.display = 'block';
@@ -253,7 +253,10 @@
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
                 
-                // Disparador directo y seguro para renderizar el HTML de la carta tradicional
+                // Forzamos la recarga al modo RG antes de renderizar para limpiar contaminación de USOpen
+                if (typeof window.cargar === 'function') {
+                    window.cargar();
+                }
                 if (typeof window.renderCartaRG === 'function') {
                     window.renderCartaRG();
                 }
@@ -269,7 +272,10 @@
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
                 
-                // Disparador directo y seguro para renderizar el HTML de la carta UsOpen
+                // Forzamos la recarga al modo USOPEN antes de renderizar para poblar la memoria
+                if (typeof window.cargar === 'function') {
+                    window.cargar();
+                }
                 if (typeof window.renderCartaUSOPEN === 'function') {
                     window.renderCartaUSOPEN();
                 }
@@ -279,6 +285,19 @@
                 document.querySelector('.btn-guardar-main').style.display = 'none';
             }
         }
+
+        // Sistema inyector de versiones directo al tag #app-version
+        setInterval(() => {
+            const appVersionSpan = document.getElementById('app-version');
+            if (appVersionSpan) {
+                let textoVersion = "v2.2.1";
+                if (typeof window.renderCartaRG === 'function' && !textoVersion.includes('RG')) textoVersion += ' + PRNT-RG';
+                if (typeof window.renderCartaUSOPEN === 'function' && !textoVersion.includes('USO')) textoVersion += ' + PRNT-USO';
+                if (appVersionSpan.textContent !== textoVersion) {
+                    appVersionSpan.textContent = textoVersion;
+                }
+            }
+        }, 1000);
     </script>
 </body>
 </html>
