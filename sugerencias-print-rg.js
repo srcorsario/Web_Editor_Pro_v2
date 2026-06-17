@@ -1,8 +1,8 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.2-RG-DEBUG";
-    console.log(`%c[Editor Pro] [Sugerencias RG] Inicializado ${VERSION}`, "color: #e05a2b; font-weight: bold;");
+    const VERSION = "v2.2.2-RG";
+    // console.log(`%c[Editor Pro] [Sugerencias RG] Inicializado ${VERSION}`, "color: #e05a2b; font-weight: bold;");
 
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
@@ -44,7 +44,6 @@
     `;
     document.head.appendChild(stylePrint);
 
-    // Función segura para extraer nombres mitigando cualquier error fatal
     function obtenerNombreSeguro(campoTexto) {
         if (!campoTexto) return '';
         try {
@@ -55,30 +54,19 @@
         } catch (e) {
             console.warn("Fallo controlado en desglosarNombre:", e);
         }
-        return campoTexto; // Fallback: si falla, devuelve el string entero original
+        return campoTexto; 
     }
 
     function renderCartaRG() {
-        console.log(`%c[PRINT-RG] Iniciando renderizado...`, "color: #e05a2b; font-weight: bold;");
-        console.log(`[PRINT-RG] Modo actual: ${window.currentMode}`);
-        console.log(`[PRINT-RG] Existe window.datosLocales: ${!!window.datosLocales}`);
-
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
 
         let fuente = [];
-        
-        // 1. Intentar leer Backup LocalStorage
         const backup = localStorage.getItem('csvData');
         if (backup) { 
-            try { fuente = JSON.parse(backup); console.log("[PRINT-RG] Usando fuente LocalStorage"); } catch(e) { console.error("Error RG parse", e); } 
-        } 
-        // 2. Sino, leer datos globales si coinciden el modo
-        else if (window.datosLocales && window.currentMode === 'RG') {
+            try { fuente = JSON.parse(backup); } catch(e) { console.error("Error RG parse", e); } 
+        } else if (window.datosLocales && window.currentMode === 'RG') {
             fuente = window.datosLocales;
-            console.log("[PRINT-RG] Usando fuente window.datosLocales (Modo RG coincide)");
-        } else {
-            console.warn(`[PRINT-RG] Datos no válidos. currentMode=${window.currentMode}, datosLocales length=${window.datosLocales ? window.datosLocales.length : 0}`);
         }
 
         if (!fuente || fuente.length === 0) {
@@ -86,15 +74,7 @@
             return;
         }
 
-        console.log(`[PRINT-RG] Fuente tiene ${fuente.length} items totales.`);
-        
         const platos = fuente.filter(p => p && p.activa && p.id >= 12000 && p.id <= 12999);
-        console.log(`%c[PRINT-RG] Items filtrados (ID 12000-12999): ${platos.length}`, "background: yellow; color: black; padding: 2px;");
-        
-        if (platos.length > 0) {
-             console.table(platos.map(p => ({id: p.id, es: p.es.substring(0, 30) + '...', precio: p.precio})));
-        }
-
         let entrantes = [], principales = [], postres = [], vinos = [];
 
         platos.forEach(p => {
@@ -113,8 +93,6 @@
                 entrantes.push(p);
             }
         });
-
-        console.log(`[PRINT-RG] Distribución -> Entrantes: ${entrantes.length}, Principales: ${principales.length}, Postres: ${postres.length}, Vinos: ${vinos.length}`);
 
         let html = `
             <button onclick="window.imprimirSugerenciasRG()" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias RG (A4)</button>
