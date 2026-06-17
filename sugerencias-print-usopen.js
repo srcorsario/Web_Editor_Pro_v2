@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.2-USOPEN";
+    const VERSION = "v2.2.3-USOPEN";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
