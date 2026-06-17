@@ -1,3 +1,4 @@
+// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 2 - POR FAVOR UNIR MENTALMENTE]
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
@@ -297,12 +298,9 @@ export const UI = {
     inicializarAjustesExpertos: () => {
         UI.log("[Expertos] Vinculando componentes interactivos del panel avanzado de control...");
 
+        // MODIFICADO: Ya no se establece el texto de versión aquí para evitar conflicto con index.html
+        // Solo nos aseguramos de que window.APP_VERSIONS.css esté definido para que index.html lo lea.
         window.APP_VERSIONS.css = window.APP_VERSIONS.css || '1.0.6';
-        const versionEl = document.getElementById('app-version');
-        if (versionEl) {
-            const v = window.APP_VERSIONS;
-            versionEl.innerText = `config.js ${v.config || '?'} - app.js ${v.app || '?'} - lang.js ${v.lang || '?'} - state.js ${v.state || '?'} - ui.js ${v.ui || '?'} - css ${v.css || '?'}`;
-        }
 
         const btnExportar = document.getElementById('saveCsvBtn');
         if (btnExportar) {
@@ -441,6 +439,9 @@ export const UI = {
         const selectorInicio = document.getElementById('rangoInicio');
         const selectorFin = document.getElementById('rangoFin');
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
+
+// [🔒 FIN DE PARTE 1. CONTINÚA EN LA SIGUIENTE PARTE]
+    // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
         const ENDPOINT_GATEWAY = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
@@ -573,13 +574,6 @@ document.addEventListener('DOMContentLoaded', () => {
     UI.renderRadiosIdiomas();
     UI.inicializarAjustesExpertos();
 
-    window.APP_VERSIONS.css = '1.0.6'; // Actualizado según styles.css provisto
-    const versionEl = document.getElementById('app-version');
-    if (versionEl) {
-        const v = window.APP_VERSIONS;
-        versionEl.innerText = `config.js ${v.config || '?'} - app.js ${v.app || '?'} - lang.js ${v.lang || '?'} - state.js ${v.state || '?'} - ui.js ${v.ui || '?'} - css ${v.css || '?'}`;
-    }
-
     const addKeyBtn = document.getElementById('addKeyBtn');
     if (addKeyBtn) {
         addKeyBtn.onclick = () => {
@@ -607,3 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
+
+
+
+// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2]
