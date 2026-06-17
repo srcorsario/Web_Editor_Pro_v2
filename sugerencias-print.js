@@ -1,3 +1,4 @@
+// MODIFICADO: Cambiado a bloque autoejecutable integrado con control de estado inter-pestañas
 (function () {
     'use strict';
 
@@ -30,7 +31,6 @@
         .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
         
-        /* MODIFICADO: Escala idéntica unificada de 200px para cualquier recurso de imagen en la cabecera derecha */
         .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         .sugerencias-header-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         
@@ -158,20 +158,37 @@
     }
 
     function cargarCarta() {
+        const isUsOpen = window.currentMode === 'USOPEN';
+
+        // MODIFICADO: Sincronización proactiva y defensiva del origen de datos.
+        // Si el usuario salta directo a la pestaña 5 sin pasar por la 4, forzamos la lectura desde el store del localstorage o del estado persistente del contenedor USOpen.
+        let fuenteDatos = (typeof datosLocales !== 'undefined') ? datosLocales : [];
+        
+        if (isUsOpen && window.activeStateContainer && window.activeStateContainer.csvDataUSOPEN) {
+            fuenteDatos = window.activeStateContainer.csvDataUSOPEN;
+        } else if (isUsOpen && localStorage.getItem('csvData_USOPEN')) {
+            try {
+                fuenteDatos = JSON.parse(localStorage.getItem('csvData_USOPEN'));
+            } catch(e) {
+                console.error("Error al restaurar lote USOPEN desde almacenamiento local:", e);
+            }
+        }
+
         const statusCarga = document.getElementById('status-carga');
         const isLoaded = statusCarga && statusCarga.innerText.includes('✅');
 
-        if (typeof datosLocales === 'undefined' || (datosLocales.length === 0 && !isLoaded)) { 
+        if (!fuenteDatos || (fuenteDatos.length === 0 && !isLoaded)) { 
             setTimeout(cargarCarta, 500); 
             return; 
         }
         
-        const contenedorId = window.currentMode === 'USOPEN' ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
+        const contenedorId = isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
         const contenedor = document.getElementById(contenedorId);
         
         if (!contenedor) return;
 
-        const platosActivos = datosLocales.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
+        // MODIFICADO: Se filtran los platos utilizando la fuente de datos correcta unificada
+        const platosActivos = fuenteDatos.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
 
         let entrantes = [];
         let principales = [];
@@ -199,9 +216,6 @@
             }
         });
 
-        const isUsOpen = window.currentMode === 'USOPEN';
-        
-        // MODIFICADO: Se asigna la ruta local limpia de la imagen directamente a la esquina superior derecha sin subheaders duplicados abajo
         const LOGO_URL = isUsOpen ? 'USOPEN_REST.png' : 'logo RG_REST.png';
         const QR_URL = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
         
@@ -212,7 +226,6 @@
         const toggleQrId = `toggle-qr-sugerencias-${modeSuffix}`;
         const imgQrId = `img-qr-sugerencias-${modeSuffix}`;
 
-        // MODIFICADO: Eliminado el bloque redundante "sugerencias-subheader" que duplicaba/cacheaba imágenes rotas antes de los entrantes. La arquitectura gráfica ahora es limpia y simétrica.
         let html = `
             <button onclick="window.imprimirSugerenciasA4()" class="btn-imprimir-a4">🖨️ Imprimir en A4</button>
             <div class="sugerencias-header-layout">
@@ -283,7 +296,8 @@
     }
 
     window.imprimirSugerenciasA4 = function() {
-        const contenedorId = window.currentMode === 'USOPEN' ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
+        const isUsOpen = window.currentMode === 'USOPEN';
+        const contenedorId = isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
         const contenedor = document.getElementById(contenedorId);
         
         if (!contenedor) return;
