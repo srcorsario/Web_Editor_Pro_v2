@@ -1,10 +1,11 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.7'; 
+window.APP_VERSIONS.ui = '1.0.8'; // Incrementado por consolidación de dependencias
 
-window.APP_VERSIONS.config = '1.0.0';
-window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.32';
+// NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
+window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
+window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
 
 let currentKeyIndex = 0;
 let procesoDetenido = false;
@@ -268,7 +269,9 @@ export const UI = {
         }
 
         try {
-            const urlDestino = getWebAppUrl();
+            // MODIFICADO: Uso de window.getWebAppUrl para acceder a la configuración global
+            const urlDestino = window.getWebAppUrl ? window.getWebAppUrl() : 'https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec';
+            
             UI.log(`[Sincro-Debug] URL de destino: ${urlDestino}`);
             
             const response = await fetch(urlDestino, { 
@@ -294,7 +297,7 @@ export const UI = {
     inicializarAjustesExpertos: () => {
         UI.log("[Expertos] Vinculando componentes interactivos del panel avanzado de control...");
 
-        window.APP_VERSIONS.css = '1.0.0';
+        window.APP_VERSIONS.css = window.APP_VERSIONS.css || '1.0.6';
         const versionEl = document.getElementById('app-version');
         if (versionEl) {
             const v = window.APP_VERSIONS;
@@ -441,7 +444,6 @@ export const UI = {
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
         const ENDPOINT_GATEWAY = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
-        
         const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
 
@@ -571,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
     UI.renderRadiosIdiomas();
     UI.inicializarAjustesExpertos();
 
-    window.APP_VERSIONS.css = '1.0.0';
+    window.APP_VERSIONS.css = '1.0.6'; // Actualizado según styles.css provisto
     const versionEl = document.getElementById('app-version');
     if (versionEl) {
         const v = window.APP_VERSIONS;
