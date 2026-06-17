@@ -8,13 +8,11 @@
     stylePrint.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
         
-        /* Fuerza al navegador a no añadir márgenes ocultos en la impresión desde la vista web */
         @page { 
             size: A4; 
             margin: 0; 
         }
 
-        /* Contenedor A4 - Ajustado para impresión estricta y vista previa idéntica */
         .sugerencias-panel { 
             background: #ffffff !important; 
             padding: 25px 35px !important; 
@@ -27,7 +25,6 @@
             flex-direction: column !important;
         }
         
-        /* Cabecera más compacta */
         .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 10px !important; }
         .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 3px !important; }
         .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
@@ -35,7 +32,6 @@
         
         .sugerencias-logo-img { width: 200px !important; height: auto !important; }
         
-        /* Cuerpo flex para empujar vinos hacia abajo y repartir espacio */
         .sugerencias-body {
             flex: 1 1 auto !important;
             display: flex !important;
@@ -45,18 +41,15 @@
         .sugerencias-seccion { margin-bottom: 15px !important; }
         .sugerencias-seccion-titulo { font-size: 0.85rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
         
-        /* Empujar la sección de Vinos hacia el QR SIN línea separadora */
         .sugerencias-seccion-vinos { 
             margin-top: auto !important; 
         }
 
-        /* NUEVO: Si no hay postres, repartir el espacio sobrante centrando los Platos Principales */
         .sugerencias-body.no-postres .sugerencias-seccion-principales {
             margin-top: auto !important;
             margin-bottom: auto !important;
         }
-
-        /* Platos más compactos */
+        
         .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 6px !important; width: 100% !important; }
         
         .sugerencias-plato-nombres { 
@@ -94,7 +87,6 @@
         
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
         
-        /* Footer compacto SIN línea superior */
         .sugerencias-footer { 
             margin-top: 15px !important; 
             padding-top: 0 !important; 
@@ -172,17 +164,20 @@
             return; 
         }
         
-        const contenedor = document.querySelector('.sugerencias-panel');
+        // MODIFICADO: Seleccionar contenedor correcto según el modo actual
+        const contenedorId = window.currentMode === 'USOPEN' ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
+        const contenedor = document.getElementById(contenedorId);
+        
         if (!contenedor) return;
 
-        const activosSugerencias = datosLocales.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
+        const platosActivos = datosLocales.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
 
         let entrantes = [];
         let principales = [];
         let postres = [];
         let vinos = [];
 
-        activosSugerencias.forEach(p => {
+        platosActivos.forEach(p => {
             const id = p.id;
             const nombreEs = desglosarNombre(p.es).nombre.toLowerCase();
             
@@ -203,18 +198,37 @@
             }
         });
 
+        // NUEVO: Usar logos específicos si estamos en UsOpen o RG
+        const isUsOpen = window.currentMode === 'USOPEN';
+        const LOGO_URL = isUsOpen ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/US_Open_%28logo%29.svg/1200px-US_Open_%28logo%29.svg.png' : 'https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';
+        
+        const QR_URL = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
+        
+        // Nota: La imagen de texto del header es específica de RG ("Roland Garros").
+        // Para UsOpen, usaré texto CSS simple o intentaré usar una genérica si no se proporciona.
+        const HEADER_TEXT_URL = isUsOpen ? '' : 'https://z-cdn-media.chatglm.cn/files/ea3128c5-540d-482e-adee-1ecbc193dd9c.png?auth_key=1881116219-cf95c1daa2014b019656762380eb6c80-0-8816330462d4295fd9dfe95d1cfab6e5';
+        const TITLE_TEXT = isUsOpen ? 'SUGERENCIAS DEL DIA' : 'SUGERENCIAS DEL CHEF';
+        const SUBTITLE_TEXT = isUsOpen ? "DAILY SUGGESTIONS" : "CHEF'S SUGGESTIONS";
+
         let html = `
             <button onclick="window.imprimirSugerenciasA4()" class="btn-imprimir-a4">🖨️ Imprimir en A4</button>
             <div class="sugerencias-header-layout">
                 <div class="sugerencias-brand-title-group">
-                    <div class="sugerencias-title-es">SUGERENCIAS DEL CHEF</div>
-                    <div class="sugerencias-title-en">CHEF'S SUGGESTIONS</div>
+                    <div class="sugerencias-title-es">${TITLE_TEXT}</div>
+                    <div class="sugerencias-title-en">${SUBTITLE_TEXT}</div>
                 </div>
-                <img src="logo RG_REST.png" class="sugerencias-logo-img">
+                <img src="${LOGO_URL}" class="sugerencias-logo-img">
             </div>
         `;
+        
+        if (HEADER_TEXT_URL) {
+             html += `
+            <div class="sugerencias-subheader">
+                <img src="${HEADER_TEXT_URL}" class="sugerencias-header-img">
+            </div>
+            `;
+        }
 
-        // NUEVO: Añadir clase al body si no hay postres para activar el CSS de reparto de espacio
         const bodyClass = postres.length === 0 ? 'sugerencias-body no-postres' : 'sugerencias-body';
         html += `<div class="${bodyClass}">`;
 
@@ -237,7 +251,6 @@
             return h + `</div>`;
         };
 
-        // NUEVO: Se añaden clases específicas a las secciones para el control de márgenes en CSS
         html += renderCat('Entrantes / Starters', entrantes, 'sugerencias-seccion-entrantes');
         html += renderCat('Platos Principales / Main Courses', principales, 'sugerencias-seccion-principales');
         html += renderCat('Postres / Desserts', postres, 'sugerencias-seccion-postres');
@@ -255,7 +268,7 @@
                     <label class="sugerencias-qr-toggle">
                         <input type="checkbox" id="toggle-qr-sugerencias" checked> Mostrar QR
                     </label>
-                    <img src="qr-code.png" class="sugerencias-qr-img" id="img-qr-sugerencias" alt="QR Menu">
+                    <img src="${QR_URL}" class="sugerencias-qr-img" id="img-qr-sugerencias" alt="QR Menu">
                 </div>
             </div>
         `;
@@ -265,14 +278,21 @@
         const toggleQrCheckbox = document.getElementById('toggle-qr-sugerencias');
         const imgQr = document.getElementById('img-qr-sugerencias');
         if (toggleQrCheckbox && imgQr) {
-            toggleQrCheckbox.addEventListener('change', function() {
+            // Limpiar eventos previos para evitar duplicados si se recarga
+            toggleQrCheckbox.replaceWith(toggleQrCheckbox.cloneNode(true));
+            const newToggle = document.getElementById('toggle-qr-sugerencias');
+            
+            newToggle.addEventListener('change', function() {
                 imgQr.style.display = this.checked ? 'block' : 'none';
             });
         }
     }
 
     window.imprimirSugerenciasA4 = function() {
-        const contenedor = document.querySelector('.sugerencias-panel');
+        // MODIFICADO: Buscar el contenedor correcto
+        const contenedorId = window.currentMode === 'USOPEN' ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
+        const contenedor = document.getElementById(contenedorId);
+        
         if (!contenedor) return;
 
         const tempDiv = document.createElement('div');
@@ -328,7 +348,6 @@
                         margin-top: auto !important; 
                     }
                     
-                    /* NUEVO: Reparto de espacio si no hay postres para impresión */
                     .sugerencias-body.no-postres .sugerencias-seccion-principales {
                         margin-top: auto !important;
                         margin-bottom: auto !important;
@@ -376,7 +395,11 @@
         printWindow.document.close();
     };
 
+    // Exponer la función para que pueda ser llamada desde switchTab
+    window.renderSugerenciasLogic = cargarCarta;
+    // Mantener compatibilidad con llamadas antiguas
     window.renderizarSugerencias = cargarCarta;
 
+    // Esperar a que el DOM esté listo y datos cargados
     cargarCarta();
 })();
