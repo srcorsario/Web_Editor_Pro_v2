@@ -2,13 +2,12 @@
     'use strict';
 
     // VERSIÓN DEL COMPONENTE (Rompe cachés y visible en consola/interfaz)
-    const VERSION_SUGERENCIAS = "v2.1.5";
+    const VERSION_SUGERENCIAS = "v2.1.6";
     console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #0d5c63; font-weight: bold;");
 
     // Inyección visual en la cabecera de la UI si existe el contenedor de versiones
     const infoCabecera = document.getElementById('version-indicador-ui') || document.querySelector('.version-logs');
     if (infoCabecera) {
-        // Evitamos duplicados si el script se recarga
         if (!document.getElementById('sugerencias-version-badge')) {
             const tagVersion = document.createElement('span');
             tagVersion.id = 'sugerencias-version-badge';
@@ -133,7 +132,6 @@
             return;
         }
 
-        // Evitamos sobreescribir si ya está pintado y tiene contenido válido para ahorrar ciclos de CPU
         if (contenedor.children.length > 1 && contenedor.querySelector('.sugerencias-body')) {
             return;
         }
@@ -233,7 +231,7 @@
         cargarCartaPorModo(modoActual);
     }
 
-    // MUTATION OBSERVER OPTIMIZADO (Evita bucles infinitos desconectando la escucha durante el render)
+    // CORREGIDO: Espaciado "const hasRG" arreglado de raíz para erradicar el ReferenceError en Firefox/Opera/Chrome.
     const observadorInstante = new MutationObserver((mutations) => {
         let debaRenderizar = false;
         
@@ -245,17 +243,15 @@
 
         if (debaRenderizar) {
             const modoActual = window.currentMode || 'RG';
-            consthasRG = document.getElementById('sugerencias-contenido');
+            const hasRG = document.getElementById('sugerencias-contenido');
             const hasUSOpen = document.getElementById('sugerencias-contenido-usopen');
 
             if (hasRG || hasUSOpen) {
-                // Desconectamos para evitar que nuestras propias mutaciones disparen el observer de nuevo
                 observadorInstante.disconnect();
                 
                 if (hasRG && modoActual === 'RG') cargarCartaPorModo('RG');
                 if (hasUSOpen && modoActual === 'USOPEN') cargarCartaPorModo('USOPEN');
                 
-                // Volvemos a escuchar tras actualizar el DOM
                 observadorInstante.observe(document.body, { childList: true, subtree: true });
             }
         }
@@ -293,7 +289,6 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
-    // Hidratación inicial controlada
     cargarCartaPorModo('RG');
     cargarCartaPorModo('USOPEN');
 })();
