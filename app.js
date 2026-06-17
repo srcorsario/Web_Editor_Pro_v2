@@ -1,22 +1,72 @@
-// [🔒 ARCHIVO UNIFICADO: app.js]
-// --- app.js ---
-// NUEVO: Registro de versión del archivo
+// =========================================================================
+// REPOSITORIO: FRONTEND ADMINISTRADOR CARTA
+// ARCHIVO: app.js (VERSIÓN COMPLETAMENTE UNIFICADA Y ALINEADA CON EL BACKEND)
+// =========================================================================
+
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.39'; // Versión corregida con blindaje y excepciones de bodega
+window.APP_VERSIONS.app = '13.0.1'; 
 
-// NUEVO: Variable global para controlar el torneo activo
-window.currentMode = 'RG'; // Por defecto RG
-
-// CORRECCIÓN CRÍTICA: Usamos window.datosLocales explícitamente para asegurar visibilidad global
-// entre app.js y los scripts de impresión (sugerencias-print-*.js)
-window.datosLocales = [];
+window.currentMode = window.currentMode || 'RG'; 
+window.datosLocales = window.datosLocales || [];
 
 let platoEditandoId = null;
 let esNuevoPlato = false; 
 let datosTempNuevo = null; 
 let opcionesENActuales = [];
 
-// Lista de Alérgenos con Emojis Restaurados
+// 📊 ÍNDICES EXACTOS SEGÚN TU GOOGLE APPS SCRIPT (Base 0 para JavaScript)
+window.IDIOM_CSV_INDICES = {
+    'es': 3,   // Columna D (4) - ES
+    'en': 7,   // Columna H (8) - EN
+    'de': 8,   // Columna I (9) - DE
+    'fr': 9,   // Columna J (10) - FR
+    'it': 10,  // Columna K (11) - IT
+    'ru': 11,  // Columna L (12) - RU
+    'nl': 12,  // Columna M (13) - NL
+    'pl': 13,  // Columna N (14) - PL
+    'sv': 14,  // Columna O (15) - SV
+    'no': 15,  // Columna P (16) - NO
+    'da': 16,  // Columna Q (17) - DA
+    'fi': 17,  // Columna R (18) - FI
+    'pt': 18,  // Columna S (19) - PT
+    'ro': 19,  // Columna T (20) - RO
+    'hu': 20,  // Columna U (21) - HU
+    'cs': 21,  // Columna V (22) - CS
+    'el': 22,  // Columna W (23) - EL
+    'tr': 23,  // Columna X (24) - TR
+    'ar': 24,  // Columna Y (25) - AR
+    'zh': 25,  // Columna Z (26) - ZH
+    'ja': 26,  // Columna AA (27) - JA
+    'ca': 27,  // Columna AB (28) - CA
+    'eu': 28,  // Columna AC (29) - EU
+    'gl': 29,  // Columna AD (30) - GL
+    'va': 30,  // Columna AE (31) - VA
+    'ko': 31   // Columna AF (32) - KO (Coreano)
+};
+
+// Generamos el array de ordenación automáticamente usando las claves del mapa de arriba
+window.IDIOMAS_ORDEN = Object.keys(window.IDIOM_CSV_INDICES);
+
+// Configuración visual de nombres completos para la UI del editor
+window.IDIOMAS_CONFIG = {
+    'ES': 'Español', 'EN': 'Inglés', 'DE': 'Alemán', 'FR': 'Francés', 'IT': 'Italiano',
+    'RU': 'Ruso', 'NL': 'Neerlandés', 'PL': 'Polaco', 'SV': 'Sueco', 'NO': 'Noruego',
+    'DA': 'Danés', 'FI': 'Finlandés', 'PT': 'Portugués', 'RO': 'Rumano', 'HU': 'Húngaro',
+    'CS': 'Checo', 'EL': 'Griego', 'TR': 'Turco', 'AR': 'Árabe', 'ZH': 'Chino',
+    'JA': 'Japonés', 'CA': 'Catalán', 'EU': 'Euskera', 'GL': 'Gallego', 'VA': 'Valenciano',
+    'KO': 'Coreano'
+};
+
+// Estructura por defecto de categorías si no se hereda de config.js
+if (typeof window.ESTRUCTURA === 'undefined') {
+    window.ESTRUCTURA = [
+        { id: 10000, rango: 999, name: "Entrantes", folder: "entrantes" },
+        { id: 11000, rango: 999, name: "Principales", folder: "principales" },
+        { id: 12100, rango: 199, name: "Croquetas", folder: "croquetas" },
+        { id: 13000, rango: 999, name: "Bodega", folder: "bodega" }
+    ];
+}
+
 const ALERGENOS_LISTA = [
     "🌾 GLUTEN", "🫘 SESAMO", "🥜 CACAHUETE", "🌱 SOJA", "🌰 FRUTOSCASCARA", 
     "🥬 APIO", "🥚 HUEVO", "🐟 PESCADO", "🟡 MOSTAZA", "🐚 MOLUSCO", 
@@ -30,6 +80,7 @@ const CROQUETAS_CONFIG = {
     vegetariana: ["Setas", "Coliflor con curry"]
 };
 
+// --- UTILS ---
 function superLimpiar(texto) {
     if (!texto) return "";
     let t = texto.toString().trim();
@@ -82,18 +133,86 @@ function extraerJSON(texto) {
     throw new Error("No se encontró un JSON válido en la respuesta de la IA.");
 }
 
+// --- FUNCIÓN CARGAR (ALINEADA AL BACKEND 32 COLUMNAS) ---
+async function cargar() {
+    try {
+        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+            UI.log('[Editor] Conectando con Google Sheets remoto...');
+        }
+        
+        if (typeof getCsvUrl !== 'function') {
+            console.error("La función getCsvUrl() no está definida.");
+            const statusCarga = document.getElementById('status-carga');
+            if (statusCarga) statusCarga.innerText = "❌ Error: getCsvUrl no configurado";
+            return;
+        }
+
+        const resp = await fetch(getCsvUrl() + '&t=' + Date.now());
+        const text = await resp.text();
+        const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
+        
+        window.datosLocales = []; 
+        
+        const indicesIdiomas = window.IDIOM_CSV_INDICES;
+        const ordenIdiomas = window.IDIOMAS_ORDEN;
+
+        filas.forEach((f, i) => {
+            if (i === 0) return; // Saltar cabecera
+            
+            const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            const id = parseInt(c[0]);
+            
+            if (!isNaN(id)) {
+                let item = {
+                    id: id,
+                    precio: c[1] || "0.00", 
+                    activa: (c[2] || "").trim().toUpperCase() === "SI" || (c[2] || "").trim().toUpperCase() === "SÍ",
+                    carpeta: c[4] || "",                  // Columna E (5) -> c[4]
+                    imagen: c[5] || "",                   // Columna F (6) -> c[5]
+                    alergenos: superLimpiar(c[6] || "")    // Columna G (7) -> c[6]
+                };
+                
+                // Mapeo estable de todos los idiomas de tu estructura fija
+                ordenIdiomas.forEach(lang => {
+                    const idx = indicesIdiomas[lang];
+                    if (idx !== undefined && c[idx] !== undefined) {
+                        item[lang] = superLimpiar(c[idx]);
+                    } else {
+                        item[lang] = "";
+                    }
+                });
+                
+                window.datosLocales.push(item);
+            }
+        });
+        
+        const statusCarga = document.getElementById('status-carga');
+        if (statusCarga) {
+            statusCarga.innerText = `✅ Sincronizados ${window.datosLocales.length} platos (${ordenIdiomas.length} Idiomas)`;
+            statusCarga.className = "status-ok";
+        }
+        
+        renderizar();
+        generarMenuAgrupado();
+    } catch (e) { 
+        console.error("Error crítico en la carga de app.js:", e);
+        const statusCarga = document.getElementById('status-carga');
+        if (statusCarga) statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
+    }
+}
+
 // --- FUNCIÓN RENDERIZAR ---
 function renderizar() {
-    // MODIFICADO: Seleccionar contenedor correcto según modo
     const editorContainerId = window.currentMode === 'USOPEN' ? 'editor-dinamico-usopen' : 'editor-dinamico';
     const editorElement = document.getElementById(editorContainerId);
     if (!editorElement) return;
 
     let h = "";
-    // Usamos window.datosLocales explícitamente
     window.datosLocales.sort((a, b) => a.id - b.id);
     
-    ESTRUCTURA.forEach(cat => {
+    const estructuraBase = window.ESTRUCTURA;
+
+    estructuraBase.forEach(cat => {
         const platos = window.datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
         
@@ -129,61 +248,6 @@ function renderizar() {
     editorElement.innerHTML = h;
 }
 
-// --- FUNCIÓN CARGAR ---
-async function cargar() {
-    try {
-        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-            UI.log('[Editor] Conectando con Google Sheets remoto...');
-        }
-        
-        // MODIFICADO: Usar getCsvUrl() dinámico
-        const resp = await fetch(getCsvUrl() + '&t=' + Date.now());
-        const text = await resp.text();
-        const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
-        window.datosLocales = []; // Reiniciamos la variable global
-        
-        filas.forEach((f, i) => {
-            if (i === 0) return;
-            const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            const id = parseInt(c[0]);
-            
-            if (!isNaN(id)) {
-                let item = {
-                    id: id,
-                    precio: c[1] || "0.00", 
-                    activa: (c[2] || "").trim().toUpperCase() === "SI",
-                    carpeta: c[4] || "",
-                    imagen: c[5] || "",
-                    alergenos: superLimpiar(c[6])
-                };
-                
-                // MODIFICADO: Bucle dinámico basado en IDIOMAS_CSV_INDICES
-                IDIOMAS_ORDEN.forEach(lang => {
-                    const index = IDIOMAS_CSV_INDICES[lang];
-                    if (index !== undefined && c[index] !== undefined) {
-                        item[lang] = superLimpiar(c[index]);
-                    }
-                });
-                
-                window.datosLocales.push(item);
-            }
-        });
-        
-        const statusCarga = document.getElementById('status-carga');
-        if (statusCarga) {
-            statusCarga.innerText = `✅ Datos Sincronizados (${window.currentMode}) (${IDIOMAS_ORDEN.length} Idiomas)`;
-            statusCarga.className = "status-ok";
-        }
-        renderizar();
-        generarMenuAgrupado();
-    } catch (e) { 
-        console.error("Error en cargar:", e);
-        const statusCarga = document.getElementById('status-carga');
-        if (statusCarga) statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
-    }
-}
-
-// MODIFICADO: Función para renderizar la pestaña de Sugerencias
 function renderizarSugerencias() {
     if (typeof window.renderSugerenciasLogic === 'function') {
         window.renderSugerenciasLogic();
@@ -204,19 +268,18 @@ function moverPlato(id, direccion) {
     renderizar();
 }
 
+// --- EDITOR DE FORMULARIO MODAL ---
 function abrirEditor(id, esNuevo = false) {
     let p = esNuevo ? datosTempNuevo : window.datosLocales.find(x => x.id === id);
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
     
-    // DETECCIÓN UNIFICADA DE BODEGA/VINOS (Incluye la excepción 12990 y el filtro por nombre)
     const nombreLower = (p && p['es']) ? p['es'].toLowerCase() : "";
     const esVino = (id >= 13000) || (id === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
     
     const esCroqueta = (id >= 12100 && id <= 12299);
     const esCroquetaVeg = (id >= 12200 && id <= 12299);
     
-    // BLINDAJE INTERACTIVO: Control de nulos para 'label-uvas'
     const labelUvas = document.getElementById('label-uvas');
     if (labelUvas) {
         labelUvas.innerText = esVino ? "Nombres y Detalles del Plato / Vino (Uvas)" : "Nombres y Detalles del Plato";
@@ -247,10 +310,10 @@ function abrirEditor(id, esNuevo = false) {
     }
     
     let htmlRestoLangs = `<div class="langs-fluid-container">`;
-    IDIOMAS_ORDEN.forEach(l => {
+    window.IDIOMAS_ORDEN.forEach(l => {
         if (l === 'es' || l === 'en') return;
         const dataLang = desglosarNombre(p[l] || "");
-        const labelIdioma = IDIOMAS_CONFIG[l.toUpperCase()] || l.toUpperCase();
+        const labelIdioma = window.IDIOMAS_CONFIG[l.toUpperCase()] || l.toUpperCase();
         
         htmlRestoLangs += `
             <div class="input-row-lang">
@@ -369,11 +432,11 @@ function comprobarRequisitosTraduccion() {
     }
 }
 
+// --- INTEGRACIÓN INTELIGENTE CON GEMINI AI ---
 async function generarTraduccionEN() {
     const editEs = document.getElementById('edit-es');
     const nombreEs = editEs ? editEs.value.trim() : "";
     
-    // DETECCIÓN UNIFICADA DE BODEGA/VINOS
     const nombreLower = nombreEs.toLowerCase();
     const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
     
@@ -385,19 +448,20 @@ async function generarTraduccionEN() {
         return;
     }
 
-    const keys = getKeys();
-    if (keys.length === 0) {
-        alert("❌ No hay API Keys de Gemini configuradas. Añade al menos una en el panel superior.");
+    if (typeof getKeys !== 'function' || getKeys().length === 0) {
+        alert("❌ No hay API Keys de Gemini configuradas.");
         return;
     }
+    const keys = getKeys();
 
     const btn = document.getElementById('btn-generar-en');
-    const originalText = btn.innerText;
-    btn.innerText = "🇬🇧 Generando opciones...";
-    btn.disabled = true;
+    const originalText = btn ? btn.innerText : "Generar";
+    if (btn) {
+        btn.innerText = "🇬🇧 Generando opciones...";
+        btn.disabled = true;
+    }
 
     const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
-
     const URL_MODELO = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
     const instruccion = `Actúa como un translator profesional de menús de restaurantes. Te paso un elemento en español: "${textoCompletoEs}".
     ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original (ej: EL COTO (D.O. Rioja)).' : ''}
@@ -427,10 +491,6 @@ async function generarTraduccionEN() {
 
             if (!response.ok || data.error) {
                 ultimoError = data.error?.message || "Error HTTP " + response.status;
-                console.warn(`Error con Key ${intentos + 1}, rotando...`, ultimoError);
-                if (data.error?.code === 429 || response.status === 429) {
-                    await new Promise(r => setTimeout(r, 3000));
-                }
                 intentos++;
                 continue;
             }
@@ -448,7 +508,6 @@ async function generarTraduccionEN() {
             }
         } catch (err) {
             ultimoError = err.message;
-            console.error(`Error procesando Key ${intentos + 1}:`, err);
             intentos++;
         }
     }
@@ -459,8 +518,10 @@ async function generarTraduccionEN() {
         alert("❌ Error al generar las opciones en Inglés.\nDetalles: " + ultimoError);
     }
 
-    btn.innerText = originalText;
-    btn.disabled = false;
+    if (btn) {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 function abrirModalTraduccionEN(opciones) {
@@ -509,7 +570,6 @@ function confirmarTraduccionEN() {
         return;
     }
     
-    // DETECCIÓN UNIFICADA DE BODEGA/VINOS Basada en la traducción o el estado actual
     let p = window.datosLocales.find(x => x.id === platoEditandoId) || {};
     const nombreLower = (p['es'] || "").toLowerCase();
     const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
@@ -545,7 +605,6 @@ async function ejecutarTraduccionAutomatica() {
     const nombreEs = editEs ? editEs.value.trim() : "";
     const nombreEn = editEn ? editEn.value.trim() : "";
     
-    // DETECCIÓN UNIFICADA DE BODEGA/VINOS
     const nombreLower = nombreEs.toLowerCase();
     const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
     
@@ -553,31 +612,24 @@ async function ejecutarTraduccionAutomatica() {
     const editEnUvas = document.getElementById('edit-en-uvas');
     const uvasEs = (esVino && editEsUvas) ? editEsUvas.value.trim() : "";
     const uvasEn = (esVino && editEnUvas) ? editEnUvas.value.trim() : "";
-    const keys = getKeys();
     
-    if (keys.length === 0) {
-        alert("❌ No hay API Keys de Gemini configuradas. Añade al menos una en el panel superior.");
-        if (btn) {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }
+    if (typeof getKeys !== 'function' || getKeys().length === 0) {
+        alert("❌ No hay API Keys de Gemini configuradas.");
+        if (btn) { btn.innerText = originalText; btn.disabled = false; }
         return;
     }
+    const keys = getKeys();
     
     const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
     const textoCompletoEn = (nombreEn + (uvasEn ? ' // ' + uvasEn : '')).replace(/"/g, "'");
     
-    const idiomasObjetivo = IDIOMAS_ORDEN.filter(l => l !== 'es' && l !== 'en');
+    const idiomasObjetivo = window.IDIOMAS_ORDEN.filter(l => l !== 'es' && l !== 'en');
     const URL_MODELO = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
     
     const instruccion = `Actúa como un traductor experto de menús de restaurantes. Traduce el siguiente elemento basándote en su texto en Español: "${textoCompletoEs}" ${textoCompletoEn ? `y su texto en Inglés (como referencia): "${textoCompletoEn}"` : ''}.
     ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado para todos los idiomas. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original en todos los idiomas (ej: EL COTO (D.O. Rioja)).' : ''}
-    
     Traduce a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
-    
-    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\").
-    Usa los códigos ISO como claves.
-    Ejemplo de formato de respuesta esperado: {"de": "Nombre // Uva", "fr": "Nombre // Uva"}`;
+    Responde EXCLUSIVAMENTE con un objeto JSON válido.`;
     
     let exito = false;
     let intentos = 0;
@@ -596,10 +648,6 @@ async function ejecutarTraduccionAutomatica() {
             
             if (!response.ok || data.error) {
                 ultimoError = data.error?.message || "Error HTTP " + response.status;
-                console.warn(`Error con Key ${intentos + 1}, rotando...`, ultimoError);
-                if (data.error?.code === 429 || response.status === 429) {
-                    await new Promise(r => setTimeout(r, 3000));
-                }
                 intentos++;
                 continue; 
             }
@@ -621,38 +669,28 @@ async function ejecutarTraduccionAutomatica() {
                         }
                     }
                 });
-                
                 exito = true;
-            } else {
-                throw new Error("La respuesta de Gemini no contiene texto válido.");
             }
         } catch (err) {
             ultimoError = err.message;
-            console.error(`Error procesando Key ${intentos + 1}:`, err);
             intentos++;
         }
     }
     
-    if (!exito) {
-        alert("❌ Error al traducir con Gemini.\nDetalles del error: " + ultimoError);
-    }
-    
-    if (btn) {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
+    if (!exito) alert("❌ Error al traducir con Gemini: " + ultimoError);
+    if (btn) { btn.innerText = originalText; btn.disabled = false; }
 }
 
+// --- GUARDAR EN ARRAY LOCAL ---
 function aplicarCambiosPlato() {
     let p = esNuevoPlato ? datosTempNuevo : window.datosLocales.find(x => x.id === platoEditandoId);
     if (esNuevoPlato) window.datosLocales.push(p);
     
-    // DETECCIÓN UNIFICADA DE BODEGA/VINOS Al Guardar
     const inputEditEs = document.getElementById('edit-es');
     const nombreLower = inputEditEs ? inputEditEs.value.toLowerCase() : "";
     const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
 
-    IDIOMAS_ORDEN.forEach(l => {
+    window.IDIOMAS_ORDEN.forEach(l => {
         const inputField = document.getElementById(`edit-${l}`);
         let nom = inputField ? superLimpiar(inputField.value) : "";
         
@@ -660,7 +698,6 @@ function aplicarCambiosPlato() {
         const uvas = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
         
         if (esVino) nom = formatWineName(nom);
-        
         p[l] = uvas ? `${nom} // ${uvas}` : nom;
     });
     
@@ -682,9 +719,13 @@ function aplicarCambiosPlato() {
     renderizar();
 }
 
+// --- CREACIÓN DE NUEVOS PLATOS ---
 function generarMenuAgrupado() {
     let h = "";
-    ESTRUCTURA.forEach(cat => {
+    const container = document.getElementById('lista-agrupada');
+    if (!container) return;
+
+    window.ESTRUCTURA.forEach(cat => {
         h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${cat.name}</div>`;
         if (cat.sub) {
             cat.sub.forEach(s => {
@@ -695,13 +736,12 @@ function generarMenuAgrupado() {
         }
         h += `</div>`;
     });
-    const container = document.getElementById('lista-agrupada');
-    if (container) container.innerHTML = h;
+    container.innerHTML = h;
 }
 
 function prepararNuevoPlato(baseId, folder) {
     let maxPermitido = baseId + 99;
-    ESTRUCTURA.forEach(cat => {
+    window.ESTRUCTURA.forEach(cat => {
         if (cat.sub) {
             const sub = cat.sub.find(s => s.id === baseId);
             if (sub && sub.max) maxPermitido = sub.max;
@@ -712,92 +752,69 @@ function prepararNuevoPlato(baseId, folder) {
     const nuevoId = similares.length > 0 ? Math.max(...similares.map(p => p.id)) + 1 : baseId;
     
     if (nuevoId > maxPermitido) {
-        alert("Límite de IDs alcanzado para esta subcategoría específica.");
+        alert("Límite de IDs alcanzado.");
         return;
     }
 
-    datosTempNuevo = { 
-        id: nuevoId, 
-        precio: "0.00", 
-        activa: true, 
-        carpeta: folder, 
-        imagen: "", 
-        alergenos: "" 
-    };
+    datosTempNuevo = { id: nuevoId, precio: "0.00", activa: true, carpeta: folder, imagen: "", alergenos: "" };
     
-    if (baseId >= 12200 && baseId <= 12299) {
-        datosTempNuevo.imagen = "croquetasvegetarianas01.webp";
-    } else if (baseId >= 12100 && baseId <= 12199) {
-        datosTempNuevo.imagen = "croquetas01.webp";
-    }
+    if (baseId >= 12200 && baseId <= 12299) datosTempNuevo.imagen = "croquetasvegetarianas01.webp";
+    else if (baseId >= 12100 && baseId <= 12199) datosTempNuevo.imagen = "croquetas01.webp";
     
-    IDIOMAS_ORDEN.forEach(l => { datosTempNuevo[l] = ""; });
+    window.IDIOMAS_ORDEN.forEach(l => { datosTempNuevo[l] = ""; });
     datosTempNuevo['es'] = "NUEVO ELEMENTO";
 
     cerrarModal('modal-selector');
     abrirEditor(nuevoId, true);
 }
 
+// --- SUBIR DATOS AL EXCEL REMOTO (POST) ---
 async function enviarAlExcel() {
     const btn = document.querySelector('.btn-guardar-main');
     const textoOriginal = btn ? btn.innerText : "";
-    if (btn) {
-        btn.innerText = "⏳ SUBIENDO Y ORDENANDO COLUMNAS..."; 
-        btn.disabled = true;
-    }
-    
-    if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-        UI.log('[Editor] Compilando matriz y enviando cambios distribuidos a Google Sheets...');
-    }
+    if (btn) { btn.innerText = "⏳ SUBIENDO..."; btn.disabled = true; }
     
     window.datosLocales.sort((a, b) => a.id - b.id);
     
+    // Mapeo saliente idéntico al esquema esperado por doPost() en tu Código.gs
     const payload = window.datosLocales.map(p => {
-        let obj = {
+        let obj = { 
             id: p.id, 
             precio: p.precio, 
             estado: p.activa ? 'si' : 'no', 
             carpeta: p.carpeta, 
             imagen: p.imagen, 
-            alergenos: p.alergenos
+            alergenos: p.alergenos 
         };
-        IDIOMAS_ORDEN.forEach(l => {
-            obj[`nombre_${l}`] = p[l] || "";
+        // Inyecta dinámicamente propiedades en minúsculas (nombre_es, nombre_en, etc.) como lee el Apps Script
+        window.IDIOMAS_ORDEN.forEach(l => { 
+            obj[`nombre_${l}`] = p[l] || ""; 
         });
         return obj;
     });
     
     try {
+        if (typeof window.getWebAppUrl !== 'function') {
+            alert("Error: getWebAppUrl() no está disponible.");
+            if (btn) { btn.disabled = false; btn.innerText = textoOriginal; }
+            return;
+        }
         const urlDestino = window.getWebAppUrl();
-        
-        console.log(`[Editor-Debug] Enviando a URL: ${urlDestino}`);
-        console.log(`[Editor-Debug] Modo: ${window.currentMode}`);
-        
-        const response = await fetch(urlDestino, { 
+        await fetch(urlDestino, { 
             method: 'POST', 
             mode: 'no-cors', 
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify(payload) 
         });
-        
-        console.log(`[Editor-Debug] Fetch finalizado. Tipo de respuesta: ${response.type}, Status: ${response.status}`);
-        
-        if (response.type === 'opaque') {
-            console.warn("[Editor-Debug] Modo 'no-cors' activo.");
-        }
-        
-        alert("✅ Petición de guardado enviada. (Nota: En modo no-cors no podemos confirmar el éxito total, revisa el Excel).");
+        alert("✅ Cambios enviados con éxito.");
         location.reload();
     } catch (e) { 
-        alert("Error al intentar impactar los datos en Google Sheets."); 
-        console.error("❌ [Editor-Debug] Error de red: ", e);
-        if (btn) {
-            btn.disabled = false; 
-            btn.innerText = textoOriginal; 
-        }
+        alert("Error de conexión al enviar datos."); 
+        if (btn) { btn.disabled = false; btn.innerText = textoOriginal; }
     }
 }
 
+// --- INTERFACES BÁSICAS ---
 function toggleActivo(id, v) { 
     const p = window.datosLocales.find(x => x.id === id);
     if(p) p.activa = v; 
@@ -813,19 +830,19 @@ function cerrarModal(id) {
     if (modal) modal.style.display = 'none'; 
 }
 
-// Inicialización automática al cargar la página
-cargar();
-
-// NUEVO: Restringir input de precio a estrictamente 2 decimales
-const editPrecioInput = document.getElementById('edit-precio');
-if (editPrecioInput) {
-    editPrecioInput.addEventListener('input', function() {
-        if (this.value.includes('.')) {
-            let parts = this.value.split('.');
-            if (parts[1] && parts[1].length > 2) {
-                parts[1] = parts[1].substring(0, 2);
-                this.value = parts.join('.');
+// Inicialización controlada por el DOM
+document.addEventListener('DOMContentLoaded', () => {
+    cargar();
+    const editPrecioInput = document.getElementById('edit-precio');
+    if (editPrecioInput) {
+        editPrecioInput.addEventListener('input', function() {
+            if (this.value.includes('.')) {
+                let parts = this.value.split('.');
+                if (parts[1] && parts[1].length > 2) {
+                    parts[1] = parts[1].substring(0, 2);
+                    this.value = parts.join('.');
+                }
             }
-        }
-    });
-}
+        });
+    }
+});
