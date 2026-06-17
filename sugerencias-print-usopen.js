@@ -4,15 +4,6 @@
     const VERSION = "v2.2.1-USOPEN";
     console.log(`%c[Editor Pro] [Sugerencias USOPEN] Inicializado ${VERSION}`, "color: #0d5c63; font-weight: bold;");
 
-    // Inyección limpia y segura en la cabecera
-    const intv = setInterval(() => {
-        const header = document.querySelector('header .text-xs') || document.getElementById('version-indicador-ui') || document.querySelector('.version-logs');
-        if (header && !header.textContent.includes('print-usopen')) {
-            header.textContent += ` - sugerencias-print-usopen.js ${VERSION}`;
-            clearInterval(intv);
-        }
-    }, 400);
-
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -57,16 +48,18 @@
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
 
+        // VARIABLES EXCLUSIVAS USOPEN: Buscamos en todas las claves posibles de almacenamiento dedicadas a USOPEN
         let fuente = [];
-        if (window.activeStateContainer && window.activeStateContainer.csvDataUSOPEN) {
-            fuente = window.activeStateContainer.csvDataUSOPEN;
-        } else {
-            const backup = localStorage.getItem('csvData_USOPEN');
-            if (backup) { try { fuente = JSON.parse(backup); } catch(e) {} }
+        const backupUSOPEN = localStorage.getItem('csvData_USOPEN') || 
+                             localStorage.getItem('csvDataUSOPEN') || 
+                             localStorage.getItem('csvData_usopen');
+
+        if (backupUSOPEN) { 
+            try { fuente = JSON.parse(backupUSOPEN); } catch(e) { console.error("Error USOPEN parse", e); } 
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta UsOpen...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta UsOpen en localStorage (csvData_USOPEN)...</div>`;
             return;
         }
 
@@ -75,8 +68,8 @@
 
         platos.forEach(p => {
             const id = p.id;
-            const nombreEs = desglosarNombre(p.es).nombre.toLowerCase();
-            if (id === 12990 || (nombreEs.includes('vino') && !nombreEs.includes('copa') && !nombreEs.includes('vinagreta'))) {
+            const textEs = desglosarNombre(p.es).nombre.toLowerCase();
+            if (id === 12990 || (textEs.includes('vino') && !textEs.includes('copa') && !textEs.includes('vinagreta'))) {
                 vinos.push(p);
             } else if (id >= 12100 && id <= 12399) {
                 entrantes.push(p);
@@ -160,7 +153,5 @@
     };
 
     window.renderCartaUSOPEN = renderCartaUSOPEN;
-
-    // Carga controlada al inicio
     setTimeout(renderCartaUSOPEN, 600);
 })();
