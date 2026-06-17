@@ -48,15 +48,17 @@
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
 
-        // VARIABLE EXCLUSIVA RG: Leemos únicamente el disco duro aislado de la carta estándar
+        // Lectura híbrida: localStorage primero, memoria volátil viva como alternativa directa
         let fuente = [];
         const backup = localStorage.getItem('csvData');
         if (backup) { 
             try { fuente = JSON.parse(backup); } catch(e) { console.error("Error RG parse", e); } 
+        } else if (window.datosLocales && window.currentMode === 'RG') {
+            fuente = window.datosLocales;
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (csvData)...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
             return;
         }
 
