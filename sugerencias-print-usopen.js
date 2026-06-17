@@ -57,6 +57,26 @@
         return campoTexto; 
     }
 
+    // Función para cambiar el QR dinámicamente
+    function toggleQR(tipo, modo) {
+        const img = document.getElementById(`img-qr-${modo}`);
+        if (!img) return;
+
+        if (tipo === 'default') {
+            if (modo === 'usopen') {
+                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
+            } else if (modo === 'rg') {
+                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
+            }
+        } else if (tipo === 'mod') {
+            if (modo === 'usopen') {
+                img.src = 'imagenes/qr-usopen_mod.png';
+            } else if (modo === 'rg') {
+                img.src = 'imagenes/qr-code-RG-MOD.png';
+            }
+        }
+    }
+
     function renderCartaUSOPEN() {
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
@@ -75,7 +95,7 @@
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta UsOpen (vuelve a la Pestaña 4 un segundo para activar la memoria)...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-sugerencias-500 italic">Esperando origen de datos válido de la carta UsOpen (vuelve a la Pestaña 4 un segundo para activar la memoria)...</div>`;
             return;
         }
 
@@ -144,7 +164,16 @@
             <div class="sugerencias-footer">
                 <div class="sugerencias-aviso">⚠️ Si usted tiene alguna alergia, por favor comuníquelo al personal.<br>If you have any food allergies, please inform staff.</div>
                 <div class="sugerencias-qr-container">
-                    <label class="sugerencias-qr-toggle"><input type="checkbox" id="toggle-qr-usopen" checked> Mostrar QR</label>
+                    <!-- NUEVO: Selector de Radio Original vs Alternativo -->
+                    <div style="font-size: 0.7rem; color: #64748b; text-align: center; margin-bottom: 5px;">
+                        Tipo de QR:
+                        <label style="cursor: pointer; margin-right: 10px; color: #0d5c63; font-weight: bold;">
+                            <input type="radio" name="qr-mode-usopen" value="default" checked onchange="toggleQR('default', 'usopen')"> Oficial
+                        </label>
+                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
+                            <input type="radio" name="qr-mode-usopen" value="mod" onchange="toggleQR('mod', 'usopen')"> Alternativo
+                        </label>
+                    </div>
                     <img src="https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1" class="sugerencias-qr-img" id="img-qr-usopen">
                 </div>
             </div>
