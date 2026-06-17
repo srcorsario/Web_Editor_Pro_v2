@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.3-USOPEN";
+    const VERSION = "v2.2.4-USOPEN";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -146,7 +146,7 @@
                             <input type="radio" name="qr-mode-usopen-footer" value="mod" onchange="window.toggleQR('mod', 'usopen')"> Alternativo
                         </label>
                     </div>
-                    <img src="https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1" class="sugerencias-qr-img" id="img-qr-usopen">
+                    <img src="qr-usopen_oficial.png" class="sugerencias-qr-img" id="img-qr-usopen">
                 </div>
             </div>
         `;
