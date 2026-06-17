@@ -40,7 +40,7 @@
         .sugerencias-qr-img { width: 130px !important; height: 130px !important; object-fit: contain !important; }
         .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
         .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
-        @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle { display: none !important; } }
+        @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle { display: none !important; }
     `;
     document.head.appendChild(stylePrint);
 
@@ -57,6 +57,28 @@
         return campoTexto; 
     }
 
+    // Función para cambiar el QR dinámicamente
+    function toggleQR(tipo, modo) {
+        const img = document.getElementById(`img-qr-${modo}`);
+        if (!img) return;
+
+        if (tipo === 'default') {
+            // URL Original (Base QR generada por Google o la configurada por defecto)
+            if (modo === 'rg') {
+                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
+            } else if (modo === 'usopen') {
+                img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
+            }
+        } else if (tipo === 'mod') {
+            // URL Alternativa (Archivos locales)
+            if (modo === 'rg') {
+                img.src = 'imagenes/qr-code-RG-MOD.png';
+            } else if (modo === 'usopen') {
+                img.src = 'imagenes/qr-usopen_mod.png';
+            }
+        }
+    }
+
     function renderCartaRG() {
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
@@ -70,7 +92,7 @@
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-sugerencias-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
             return;
         }
 
@@ -139,21 +161,22 @@
             <div class="sugerencias-footer">
                 <div class="sugerencias-aviso">⚠️ Si usted tiene alguna alergia, por favor comuníquelo al personal.<br>If you have any food allergies, please inform staff.</div>
                 <div class="sugerencias-qr-container">
-                    <label class="sugerencias-qr-toggle"><input type="checkbox" id="toggle-qr-rg" checked> Mostrar QR</label>
+                    <!-- NUEVO: Selector de Radio Original vs Alternativo -->
+                    <div style="font-size: 0.7rem; color: #64748b; text-align: center; margin-bottom: 5px;">
+                        Tipo de QR:
+                        <label style="cursor: pointer; margin-right: 10px; color: #0d5c63; font-weight: bold;">
+                            <input type="radio" name="qr-mode-rg" value="default" checked onchange="toggleQR('default', 'rg')"> Oficial
+                        </label>
+                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
+                            <input type="radio" name="qr-mode-rg" value="mod" onchange="toggleQR('mod', 'rg')"> Alternativo
+                        </label>
+                    </div>
                     <img src="https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1" class="sugerencias-qr-img" id="img-qr-rg">
                 </div>
             </div>
         `;
 
         contenedor.innerHTML = html;
-
-        const toggle = document.getElementById('toggle-qr-rg');
-        if(toggle) {
-            toggle.addEventListener('change', function() {
-                const img = document.getElementById('img-qr-rg');
-                if(img) img.style.display = this.checked ? 'block' : 'none';
-            });
-        }
     }
 
     window.imprimirSugerenciasRG = function() {
