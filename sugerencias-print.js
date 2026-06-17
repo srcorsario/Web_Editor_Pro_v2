@@ -1,28 +1,43 @@
 (function () {
     'use strict';
 
-    // VERSIÓN DEL COMPONENTE (Visible en desarrollo y cabecera)
-    const VERSION_SUGERENCIAS = "v2.1.7";
-    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #2563eb; font-weight: bold;");
+    // VERSIÓN DEL COMPONENTE (Visible en consola y cabecera global)
+    const VERSION_SUGERENCIAS = "v2.1.8";
+    console.log(`%c[Editor Pro] [Sugerencias] Inicializando módulo de impresión ${VERSION_SUGERENCIAS}`, "color: #10b981; font-weight: bold;");
 
-    // Inyección visual en la cabecera de la UI si existe el contenedor de versiones
-    const infoCabecera = document.getElementById('version-indicador-ui') || document.querySelector('.version-logs');
-    if (infoCabecera) {
-        const viejoBadge = document.getElementById('sugerencias-version-badge');
-        if (viejoBadge) viejoBadge.remove(); // Limpieza activa de versiones previas
-        
-        const tagVersion = document.createElement('span');
-        tagVersion.id = 'sugerencias-version-badge';
-        tagVersion.className = 'text-xs text-slate-400 ml-2';
-        tagVersion.innerText = `| Sugerencias: ${VERSION_SUGERENCIAS}`;
-        infoCabecera.appendChild(tagVersion);
+    // SOLUCIÓN CABECERA: Forzamos la inyección visual buscando patrones comunes en tu barra superior
+    function inyectarVersionEnCabecera() {
+        if (document.getElementById('sugerencias-version-badge')) return;
+
+        // Intentamos buscar el contenedor por ID, por clase de logs, o directamente el primer párrafo/div pequeño de la cabecera
+        const contenedor = document.getElementById('version-indicador-ui') || 
+                           document.querySelector('.version-logs') || 
+                           document.querySelector('header .text-xs') || 
+                           document.querySelector('.header-version-container');
+
+        if (contenedor) {
+            const tagVersion = document.createElement('span');
+            tagVersion.id = 'sugerencias-version-badge';
+            tagVersion.className = 'text-xs text-slate-400 ml-2';
+            tagVersion.innerText = ` - sugerencias-print.js ${VERSION_SUGERENCIAS}`;
+            contenedor.appendChild(tagVersion);
+        } else {
+            // Plan de respaldo si no encuentra ninguna clase: buscar texto que contenga "app.js" y añadirlo al lado
+            const todosLosElementos = document.querySelectorAll('header *, div *');
+            for (let el of todosLosElementos) {
+                if (el.children.length === 0 && el.textContent.includes('app.js') && !el.textContent.includes('sugerencias-print')) {
+                    el.textContent += ` - sugerencias-print.js ${VERSION_SUGERENCIAS}`;
+                    break;
+                }
+            }
+        }
     }
 
     const ALERGENOS_BASE_PATH = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
     stylePrint.innerHTML = `
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
         
         @page { 
             size: A4; 
@@ -47,7 +62,6 @@
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
         
         .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
-        
         .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         
         .sugerencias-body {
@@ -129,12 +143,11 @@
         if (!contenedor) return;
 
         if (!fuenteDatos || fuenteDatos.length === 0) {
-            setTimeout(() => cargarCartaPorModo(modoObjetivo), 250);
+            setTimeout(() => cargarCartaPorModo(modoObjetivo), 200);
             return;
         }
 
-        // MODIFICADO: Solo abortamos si el contenedor YA contiene la estructura de la carta real dibujada (.sugerencias-body)
-        // Esto evita quedarse en blanco si la pestaña se crea inicialmente vacía por el layout base de la app.
+        // Si ya tiene el cuerpo de la carta renderizado con datos, no hacemos nada para evitar parpadeos
         if (contenedor.querySelector('.sugerencias-body')) {
             return;
         }
@@ -230,10 +243,16 @@
     }
 
     function cargarCarta() {
-        const modoActual = window.currentMode || 'RG';
-        cargarCartaPorModo(modoActual);
+        // Renderizado omnidireccional: si el contenedor de la 5 está en pantalla, lo llenamos sí o sí
+        if (document.getElementById('sugerencias-contenido-usopen')) {
+            cargarCartaPorModo('USOPEN');
+        }
+        if (document.getElementById('sugerencias-contenido')) {
+            cargarCartaPorModo('RG');
+        }
     }
 
+    // MUTATION OBSERVER TOTALMENTE REACTIVO
     const observadorInstante = new MutationObserver((mutations) => {
         let debaRenderizar = false;
         
@@ -244,15 +263,18 @@
         });
 
         if (debaRenderizar) {
-            const modoActual = window.currentMode || 'RG';
             const hasRG = document.getElementById('sugerencias-contenido');
             const hasUSOpen = document.getElementById('sugerencias-contenido-usopen');
 
             if (hasRG || hasUSOpen) {
                 observadorInstante.disconnect();
                 
-                if (hasRG && modoActual === 'RG') cargarCartaPorModo('RG');
-                if (hasUSOpen && modoActual === 'USOPEN') cargarCartaPorModo('USOPEN');
+                // Intentamos inyectar la versión de nuevo si el DOM cambió
+                inyectarVersionEnCabecera();
+                
+                // Forzamos el renderizado sin importar el estado cruzado de las variables de pestaña
+                if (hasRG) cargarCartaPorModo('RG');
+                if (hasUSOpen) cargarCartaPorModo('USOPEN');
                 
                 observadorInstante.observe(document.body, { childList: true, subtree: true });
             }
@@ -262,7 +284,7 @@
     observadorInstante.observe(document.body, { childList: true, subtree: true });
 
     window.imprimirSugerenciasA4 = function() {
-        const isUsOpen = window.currentMode === 'USOPEN';
+        const isUsOpen = window.currentMode === 'USOPEN' || !!document.getElementById('sugerencias-contenido-usopen');
         const contenedor = document.getElementById(isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido');
         if (!contenedor) return;
 
@@ -291,7 +313,10 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
-    // Forzamos hidratación inicial en paralelo limpia de ambos canales
-    cargarCartaPorModo('RG');
-    cargarCartaPorModo('USOPEN');
+    // Hidratación y escaneo inmediato en carga
+    setTimeout(() => {
+        inyectarVersionEnCabecera();
+        cargarCartaPorModo('RG');
+        cargarCartaPorModo('USOPEN');
+    }, 100);
 })();
