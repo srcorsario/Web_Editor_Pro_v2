@@ -2,12 +2,15 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.36'; // Versión incrementada por corrección crítica
+window.APP_VERSIONS.app = '1.0.37'; // Versión corregida para window.datosLocales
 
 // NUEVO: Variable global para controlar el torneo activo
 window.currentMode = 'RG'; // Por defecto RG
 
-let datosLocales = [];
+// CORRECCIÓN CRÍTICA: Usamos window.datosLocales explícitamente para asegurar visibilidad global
+// entre app.js y los scripts de impresión (sugerencias-print-*.js)
+window.datosLocales = [];
+
 let platoEditandoId = null;
 let esNuevoPlato = false; 
 let datosTempNuevo = null; 
@@ -79,7 +82,7 @@ function extraerJSON(texto) {
     throw new Error("No se encontró un JSON válido en la respuesta de la IA.");
 }
 
-// --- FUNCIÓN RENDERIZAR (FALTANTE Y RECONSTRUIDA) ---
+// --- FUNCIÓN RENDERIZAR ---
 function renderizar() {
     // MODIFICADO: Seleccionar contenedor correcto según modo
     const editorContainerId = window.currentMode === 'USOPEN' ? 'editor-dinamico-usopen' : 'editor-dinamico';
@@ -87,10 +90,11 @@ function renderizar() {
     if (!editorElement) return;
 
     let h = "";
-    datosLocales.sort((a, b) => a.id - b.id);
+    // Usamos window.datosLocales explícitamente
+    window.datosLocales.sort((a, b) => a.id - b.id);
     
     ESTRUCTURA.forEach(cat => {
-        const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
+        const platos = window.datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
         
         h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
@@ -125,7 +129,7 @@ function renderizar() {
     editorElement.innerHTML = h;
 }
 
-// --- FUNCIÓN CARGAR (FALTANTE) ---
+// --- FUNCIÓN CARGAR ---
 async function cargar() {
     try {
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
@@ -136,7 +140,7 @@ async function cargar() {
         const resp = await fetch(getCsvUrl() + '&t=' + Date.now());
         const text = await resp.text();
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
-        datosLocales = [];
+        window.datosLocales = []; // Reiniciamos la variable global
         
         filas.forEach((f, i) => {
             if (i === 0) return;
@@ -153,7 +157,7 @@ async function cargar() {
                     alergenos: superLimpiar(c[6])
                 };
                 
-                // MODIFICADO: Bucle dinámico basado en IDIOMAS_CSV_INDICES para evitar mapeos manuales
+                // MODIFICADO: Bucle dinámico basado en IDIOMAS_CSV_INDICES
                 IDIOMAS_ORDEN.forEach(lang => {
                     const index = IDIOMAS_CSV_INDICES[lang];
                     if (index !== undefined && c[index] !== undefined) {
@@ -161,7 +165,7 @@ async function cargar() {
                     }
                 });
                 
-                datosLocales.push(item);
+                window.datosLocales.push(item);
             }
         });
         
@@ -179,32 +183,29 @@ async function cargar() {
     }
 }
 
-// MODIFICADO: Función para renderizar la pestaña de Sugerencias (Lógica compartida con sugerencias-print.js para UI simple si fuera necesario)
-// Nota: La renderización pesada está en sugerencias-print.js, esta es backup/fallback.
+// MODIFICADO: Función para renderizar la pestaña de Sugerencias
 function renderizarSugerencias() {
-    // Esta función es principalmente invocada por el script sugerencias-print.js,
-    // pero mantenemos la definición aquí por seguridad si se llama globalmente.
     if (typeof window.renderSugerenciasLogic === 'function') {
         window.renderSugerenciasLogic();
     }
 }
 
 function moverPlato(id, direccion) {
-    const idx = datosLocales.findIndex(x => x.id === id);
+    const idx = window.datosLocales.findIndex(x => x.id === id);
     if (direccion === 'subir' && idx > 0) {
-        const temp = datosLocales[idx].id;
-        datosLocales[idx].id = datosLocales[idx-1].id;
-        datosLocales[idx-1].id = temp;
-    } else if (direccion === 'bajar' && idx < datosLocales.length - 1) {
-        const temp = datosLocales[idx].id;
-        datosLocales[idx].id = datosLocales[idx+1].id;
-        datosLocales[idx+1].id = temp;
+        const temp = window.datosLocales[idx].id;
+        window.datosLocales[idx].id = window.datosLocales[idx-1].id;
+        window.datosLocales[idx-1].id = temp;
+    } else if (direccion === 'bajar' && idx < window.datosLocales.length - 1) {
+        const temp = window.datosLocales[idx].id;
+        window.datosLocales[idx].id = window.datosLocales[idx+1].id;
+        window.datosLocales[idx+1].id = temp;
     }
     renderizar();
 }
 
 function abrirEditor(id, esNuevo = false) {
-    let p = esNuevo ? datosTempNuevo : datosLocales.find(x => x.id === id);
+    let p = esNuevo ? datosTempNuevo : window.datosLocales.find(x => x.id === id);
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
     const esVino = (id >= 13000);
@@ -577,8 +578,8 @@ async function ejecutarTraduccionAutomatica() {
 }
 
 function aplicarCambiosPlato() {
-    let p = esNuevoPlato ? datosTempNuevo : datosLocales.find(x => x.id === platoEditandoId);
-    if (esNuevoPlato) datosLocales.push(p);
+    let p = esNuevoPlato ? datosTempNuevo : window.datosLocales.find(x => x.id === platoEditandoId);
+    if (esNuevoPlato) window.datosLocales.push(p);
     
     const esVino = (platoEditandoId >= 13000);
 
@@ -608,8 +609,6 @@ function aplicarCambiosPlato() {
 }
 
 function generarMenuAgrupado() {
-    // MODIFICADO: Usar modal-selector único, pero el botón "+" flotante solo aparece en pestañas de editor
-    // La lógica interna detectará el ID y usará la estructura actual.
     let h = "";
     ESTRUCTURA.forEach(cat => {
         h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${cat.name}</div>`;
@@ -635,7 +634,7 @@ function prepararNuevoPlato(baseId, folder) {
         }
     });
 
-    const similares = datosLocales.filter(p => p.id >= baseId && p.id <= maxPermitido);
+    const similares = window.datosLocales.filter(p => p.id >= baseId && p.id <= maxPermitido);
     const nuevoId = similares.length > 0 ? Math.max(...similares.map(p => p.id)) + 1 : baseId;
     
     if (nuevoId > maxPermitido) {
@@ -675,9 +674,9 @@ async function enviarAlExcel() {
         UI.log('[Editor] Compilando matriz y enviando cambios distribuidos a Google Sheets...');
     }
     
-    datosLocales.sort((a, b) => a.id - b.id);
+    window.datosLocales.sort((a, b) => a.id - b.id);
     
-    const payload = datosLocales.map(p => {
+    const payload = window.datosLocales.map(p => {
         let obj = {
             id: p.id, 
             precio: p.precio, 
@@ -693,7 +692,6 @@ async function enviarAlExcel() {
     });
     
     try {
-        // MODIFICADO: Usar getWebAppUrl() dinámico
         const urlDestino = window.getWebAppUrl();
         
         console.log(`[Editor-Debug] Enviando a URL: ${urlDestino}`);
@@ -723,7 +721,7 @@ async function enviarAlExcel() {
 }
 
 function toggleActivo(id, v) { 
-    const p = datosLocales.find(x => x.id === id);
+    const p = window.datosLocales.find(x => x.id === id);
     if(p) p.activa = v; 
 }
 
