@@ -1,7 +1,10 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.33'; // Versión incrementada por unificación de lógica de state
+window.APP_VERSIONS.app = '1.0.34'; // Versión incrementada por soporte multi-torneo
+
+// NUEVO: Variable global para controlar el torneo activo
+window.currentMode = 'RG'; // Por defecto RG
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -81,7 +84,8 @@ async function cargar() {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
-        const resp = await fetch(CSV_URL + '&t=' + Date.now());
+        // MODIFICADO: Usar getCsvUrl() dinámico
+        const resp = await fetch(getCsvUrl() + '&t=' + Date.now());
         const text = await resp.text();
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
@@ -115,7 +119,7 @@ async function cargar() {
         
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
-            statusCarga.innerText = `✅ Datos Sincronizados (${IDIOMAS_ORDEN.length} Idiomas)`;
+            statusCarga.innerText = `✅ Datos Sincronizados (${window.currentMode}) (${IDIOMAS_ORDEN.length} Idiomas)`;
             statusCarga.className = "status-ok";
         }
         renderizar();
@@ -127,6 +131,11 @@ async function cargar() {
 }
 
 function renderizar() {
+    // MODIFICADO: Seleccionar contenedor correcto según modo
+    const editorContainerId = window.currentMode === 'USOPEN' ? 'editor-dinamico-usopen' : 'editor-dinamico';
+    const editorElement = document.getElementById(editorContainerId);
+    if (!editorElement) return;
+
     let h = "";
     datosLocales.sort((a, b) => a.id - b.id);
     
@@ -163,156 +172,17 @@ function renderizar() {
         });
         h += `</div>`;
     });
-    document.getElementById('editor-dinamico').innerHTML = h;
+    editorElement.innerHTML = h;
 }
 
-// MODIFICADO: Función para renderizar la pestaña de Sugerencias del Día (Cabecera con imágenes y layout actualizado)
+// MODIFICADO: Función para renderizar la pestaña de Sugerencias (Lógica compartida con sugerencias-print.js para UI simple si fuera necesario)
+// Nota: La renderización pesada está en sugerencias-print.js, esta es backup/fallback.
 function renderizarSugerencias() {
-    const contenedor = document.getElementById('sugerencias-contenido');
-    if (!contenedor) return;
-
-    const platosActivos = datosLocales.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
-    
-    let entrantes = [];
-    let principales = [];
-    let postres = [];
-    let vinos = [];
-
-    platosActivos.forEach(p => {
-        const id = p.id;
-        const nombreEs = desglosarNombre(p.es).nombre.toLowerCase();
-        
-        if (nombreEs.includes('vino')) {
-            vinos.push(p);
-        } else if ((id >= 12100 && id <= 12399)) {
-            entrantes.push(p);
-        } else if (id >= 12400 && id <= 12899) {
-            principales.push(p);
-        } else if (id >= 12900 && id <= 12999) {
-            postres.push(p);
-        } else {
-            entrantes.push(p);
-        }
-    });
-
-    const LOGO_URL = 'https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';
-    const QR_URL = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
-    const HEADER_TEXT_URL = 'https://z-cdn-media.chatglm.cn/files/ea3128c5-540d-482e-adee-1ecbc193dd9c.png?auth_key=1881116219-cf95c1daa2014b019656762380eb6c80-0-8816330462d4295fd9dfe95d1cfab6e5';
-
-    let html = `
-        <div class="sugerencias-top-row">
-            <h2 class="sugerencias-titulo-dia">Sugerencias del día</h2>
-            <img src="${LOGO_URL}" class="sugerencias-logo-img" alt="Roland Garros Restaurant">
-        </div>
-        <div class="sugerencias-subheader">
-            <img src="${HEADER_TEXT_URL}" class="sugerencias-header-img" alt="Sugerencias del Chef / Chef's Suggestions">
-        </div>
-    `;
-
-    if (entrantes.length > 0) {
-        html += `<div class="sugerencias-seccion">
-            <div class="sugerencias-seccion-titulo">Entrantes & Sugerencias / Starters & Suggestions</div>`;
-        entrantes.forEach(p => {
-            const nombreEs = desglosarNombre(p.es).nombre;
-            const nombreEn = desglosarNombre(p.en).nombre;
-            html += `<div class="sugerencias-plato">
-                <div class="sugerencias-plato-nombres">
-                    <div class="sugerencias-nombre-es">${nombreEs}</div>
-                    ${nombreEn ? `<div class="sugerencias-nombre-en">${nombreEn}</div>` : ''}
-                </div>
-                <div class="sugerencias-puntos"></div>
-                <div class="sugerencias-precio">${p.precio}€</div>
-            </div>`;
-        });
-        html += `</div>`;
-        html += `<div class="sugerencias-separador"></div>`; 
+    // Esta función es principalmente invocada por el script sugerencias-print.js,
+    // pero mantenemos la definición aquí por seguridad si se llama globalmente.
+    if (typeof window.renderSugerenciasLogic === 'function') {
+        window.renderSugerenciasLogic();
     }
-
-    if (principales.length > 0) {
-        html += `<div class="sugerencias-seccion">
-            <div class="sugerencias-seccion-titulo">Platos Principales / Main Courses</div>`;
-        principales.forEach(p => {
-            const nombreEs = desglosarNombre(p.es).nombre;
-            const nombreEn = desglosarNombre(p.en).nombre;
-            html += `<div class="sugerencias-plato">
-                <div class="sugerencias-plato-nombres">
-                    <div class="sugerencias-nombre-es">${nombreEs}</div>
-                    ${nombreEn ? `<div class="sugerencias-nombre-en">${nombreEn}</div>` : ''}
-                </div>
-                <div class="sugerencias-puntos"></div>
-                <div class="sugerencias-precio">${p.precio}€</div>
-            </div>`;
-        });
-        html += `</div>`;
-    }
-
-    if (vinos.length > 0) {
-        html += `<div class="sugerencias-seccion">
-            <div class="sugerencias-seccion-titulo">Vinos Recomendados / Recommended Wines</div>`;
-        vinos.forEach(p => {
-            const nombreEs = desglosarNombre(p.es).nombre;
-            const nombreEn = desglosarNombre(p.en).nombre;
-            html += `<div class="sugerencias-plato">
-                <div class="sugerencias-plato-nombres">
-                    <div class="sugerencias-nombre-es">${nombreEs}</div>
-                    ${nombreEn ? `<div class="sugerencias-nombre-en">${nombreEn}</div>` : ''}
-                </div>
-                <div class="sugerencias-puntos"></div>
-                <div class="sugerencias-precio">${p.precio}€</div>
-            </div>`;
-        });
-        html += `</div>`;
-    }
-
-    if (postres.length > 0) {
-        html += `<div class="sugerencias-seccion">
-            <div class="sugerencias-seccion-titulo">Postres / Desserts</div>`;
-        postres.forEach(p => {
-            const nombreEs = desglosarNombre(p.es).nombre;
-            const nombreEn = desglosarNombre(p.en).nombre;
-            html += `<div class="sugerencias-plato">
-                <div class="sugerencias-plato-nombres">
-                    <div class="sugerencias-nombre-es">${nombreEs}</div>
-                    ${nombreEn ? `<div class="sugerencias-nombre-en">${nombreEn}</div>` : ''}
-                </div>
-                <div class="sugerencias-puntos"></div>
-                <div class="sugerencias-precio">${p.precio}€</div>
-            </div>`;
-        });
-        html += `</div>`;
-    }
-
-    html += `<div class="sugerencias-footer">
-        <div class="sugerencias-aviso">
-            ⚠️ Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>
-            If you have any food allergies, please inform our staff.
-        </div>
-        <div class="sugerencias-qr">
-            <img src="${QR_URL}" class="sugerencias-qr-img" alt="QR Menu">
-        </div>
-    </div>`;
-
-    if (platosActivos.length === 0) {
-        html = `<div class="sugerencias-top-row">
-                    <h2 class="sugerencias-titulo-dia">Sugerencias del día</h2>
-                    <img src="${LOGO_URL}" class="sugerencias-logo-img" alt="Roland Garros Restaurant">
-                </div>
-                <div class="sugerencias-subheader">
-                    <img src="${HEADER_TEXT_URL}" class="sugerencias-header-img" alt="Sugerencias del Chef / Chef's Suggestions">
-                </div>
-                <p style="text-align: center; color: #7f8c8d; font-style: italic; margin-top: 40px;">No hay sugerencias activas en la web para mostrar (IDs 12000-12999).</p>
-                <div class="sugerencias-footer">
-                    <div class="sugerencias-aviso">
-                        ⚠️ Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>
-                        If you have any food allergies, please inform our staff.
-                    </div>
-                    <div class="sugerencias-qr">
-                        <img src="${QR_URL}" class="sugerencias-qr-img" alt="QR Menu">
-                    </div>
-                </div>`;
-    }
-
-    contenedor.innerHTML = html;
 }
 
 function moverPlato(id, direccion) {
@@ -733,6 +603,8 @@ function aplicarCambiosPlato() {
 }
 
 function generarMenuAgrupado() {
+    // MODIFICADO: Usar modal-selector único, pero el botón "+" flotante solo aparece en pestañas de editor
+    // La lógica interna detectará el ID y usará la estructura actual.
     let h = "";
     ESTRUCTURA.forEach(cat => {
         h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${cat.name}</div>`;
@@ -745,7 +617,8 @@ function generarMenuAgrupado() {
         }
         h += `</div>`;
     });
-    document.getElementById('lista-agrupada').innerHTML = h;
+    const container = document.getElementById('lista-agrupada');
+    if (container) container.innerHTML = h;
 }
 
 function prepararNuevoPlato(baseId, folder) {
@@ -799,7 +672,6 @@ async function enviarAlExcel() {
     
     datosLocales.sort((a, b) => a.id - b.id);
     
-    // MODIFICADO: Bucle dinámico para evitar mapeos manuales en el payload
     const payload = datosLocales.map(p => {
         let obj = {
             id: p.id, 
@@ -816,12 +688,11 @@ async function enviarAlExcel() {
     });
     
     try {
+        // MODIFICADO: Usar getWebAppUrl() dinámico
         const urlDestino = window.getWebAppUrl();
         
-        // NUEVO: Logs de depuración en consola nativa (F12) para auditar el envío
         console.log(`[Editor-Debug] Enviando a URL: ${urlDestino}`);
-        console.log(`[Editor-Debug] Tamaño del payload: ${(new Blob([JSON.stringify(payload)])).size / 1024} KB`);
-        console.log(`[Editor-Debug] Muestra del primer elemento del payload:`, payload[0]);
+        console.log(`[Editor-Debug] Modo: ${window.currentMode}`);
         
         const response = await fetch(urlDestino, { 
             method: 'POST', 
@@ -830,11 +701,10 @@ async function enviarAlExcel() {
             body: JSON.stringify(payload) 
         });
         
-        // NUEVO: Log de la respuesta real en consola nativa
         console.log(`[Editor-Debug] Fetch finalizado. Tipo de respuesta: ${response.type}, Status: ${response.status}`);
         
         if (response.type === 'opaque') {
-            console.warn("[Editor-Debug] Modo 'no-cors' activo: El navegador ha ocultado la respuesta del servidor. Verifica tu Google Sheet manualmente.");
+            console.warn("[Editor-Debug] Modo 'no-cors' activo.");
         }
         
         alert("✅ Petición de guardado enviada. (Nota: En modo no-cors no podemos confirmar el éxito total, revisa el Excel).");
@@ -856,6 +726,7 @@ function abrirSelector() { document.getElementById('modal-selector').style.displ
 function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
 
 // Inicialización automática al cargar la página
+// Solo cargamos si no estamos en UsOpen inicialmente (o cargamos RG por defecto)
 cargar();
 
 // NUEVO: Restringir input de precio a estrictamente 2 decimales
