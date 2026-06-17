@@ -30,8 +30,8 @@
         .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
         
-        .sugerencias-logo-img { width: 200px !important; height: auto !important; }
-        /* MODIFICADO: Escala unificada idéntica a logo RG_REST / sugerencias-logo-img */
+        /* MODIFICADO: Escala idéntica unificada de 200px para cualquier recurso de imagen en la cabecera derecha */
+        .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         .sugerencias-header-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
         
         .sugerencias-body {
@@ -200,13 +200,11 @@
         });
 
         const isUsOpen = window.currentMode === 'USOPEN';
-        const LOGO_URL = isUsOpen ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/US_Open_%28logo%29.svg/1200px-US_Open_%28logo%29.svg.png' : 'https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';
         
+        // MODIFICADO: Se asigna la ruta local limpia de la imagen directamente a la esquina superior derecha sin subheaders duplicados abajo
+        const LOGO_URL = isUsOpen ? 'USOPEN_REST.png' : 'logo RG_REST.png';
         const QR_URL = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-60430b647cd3b43f34b5ec212f6640b1';
         
-        const HEADER_TEXT_URL = isUsOpen ? 'USOPEN_REST.png' : 'https://z-cdn-media.chatglm.cn/files/ea3128c5-540d-482e-adee-1ecbc193dd9c.png?auth_key=1881116219-cf95c1daa2014b019656762380eb6c80-0-8816330462d4295fd9dfe95d1cfab6e5';
-        
-        // MODIFICADO: Textos estandarizados e idénticos en ambos modos según requerimiento directo
         const TITLE_TEXT = 'SUGERENCIAS DEL CHEF';
         const SUBTITLE_TEXT = "CHEF'S SUGGESTIONS";
 
@@ -214,6 +212,7 @@
         const toggleQrId = `toggle-qr-sugerencias-${modeSuffix}`;
         const imgQrId = `img-qr-sugerencias-${modeSuffix}`;
 
+        // MODIFICADO: Eliminado el bloque redundante "sugerencias-subheader" que duplicaba/cacheaba imágenes rotas antes de los entrantes. La arquitectura gráfica ahora es limpia y simétrica.
         let html = `
             <button onclick="window.imprimirSugerenciasA4()" class="btn-imprimir-a4">🖨️ Imprimir en A4</button>
             <div class="sugerencias-header-layout">
@@ -221,17 +220,9 @@
                     <div class="sugerencias-title-es">${TITLE_TEXT}</div>
                     <div class="sugerencias-title-en">${SUBTITLE_TEXT}</div>
                 </div>
-                <img src="${LOGO_URL}" class="sugerencias-logo-img">
+                <img src="${LOGO_URL}" class="sugerencias-logo-img" onerror="this.src='https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';">
             </div>
         `;
-        
-        if (HEADER_TEXT_URL) {
-            html += `
-            <div class="sugerencias-subheader">
-                <img src="${HEADER_TEXT_URL}" class="sugerencias-header-img" onerror="this.style.opacity='0'; this.style.height='0px'; console.warn('No se pudo cargar la imagen local del encabezado.');">
-            </div>
-            `;
-        }
 
         const bodyClass = postres.length === 0 ? 'sugerencias-body no-postres' : 'sugerencias-body';
         html += `<div class="${bodyClass}">`;
@@ -335,7 +326,7 @@
                     .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 3px !important; }
                     .sugerencias-title-es { font-weight: 300 !important; font-size: 2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
                     .sugerencias-title-en { font-weight: 300 !important; font-size: 1.4rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
-                    .sugerencias-logo-img { width: 200px !important; height: auto !important; }
+                    .sugerencias-logo-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
                     .sugerencias-header-img { width: 200px !important; height: auto !important; object-fit: contain !important; }
                     
                     .sugerencias-body {
