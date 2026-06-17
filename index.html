@@ -14,7 +14,7 @@
 
     <div class="container">
         <div class="header-admin">
-            <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
+            <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block; white-space: normal;"></span></h1>
             <div id="status-carga" class="status-ok">⏳ Conectando...</div>
             
             <div class="api-keys-manager">
@@ -158,8 +158,7 @@
             document.querySelector('.btn-add-float').style.display = esEditor ? 'block' : 'none';
             document.querySelector('.btn-guardar-main').style.display = esEditor ? 'block' : 'none';
 
-            // MODIFICADO: Para las pestañas de sugerencias, forzamos la recarga de datos (cargar) antes de renderizar
-            // para asegurar que window.datosLocales contiene la información correcta del modo actual (RG o USOPEN).
+            // CORRECCIÓN: Para las pestañas de sugerencias, forzamos la recarga de datos antes de renderizar
             if (tabId === 'sugerencias' && typeof window.renderCartaRG === 'function') {
                 if (typeof window.cargar === 'function') {
                     window.cargar().then(() => window.renderCartaRG());
@@ -179,10 +178,27 @@
 
         function actualizarTextoVersion() {
             const appVersionSpan = document.getElementById('app-version');
-            if (appVersionSpan) {
-                appVersionSpan.textContent = "v2.2.1 + PRNT-RG v2.2.2-RG + PRNT-USO v2.2.2-USOPEN";
-            }
+            if (!appVersionSpan) return;
+
+            // 1. Leer versiones centrales desde el objeto global (populado por ui.js y otros scripts)
+            const v = window.APP_VERSIONS || {};
+            
+            // 2. Construir string base con abreviaturas para ahorrar espacio si es necesario
+            // c:config, a:app, l:lang, s:state, u:ui
+            let versionString = `cfg:${v.config || '?'} app:${v.app || '?'} lng:${v.lang || '?'} st:${v.state || '?'} ui:${v.ui || '?'} css:${v.css || '?'}`;
+
+            // 3. Añadir versiones de scripts de impresión si las funciones están disponibles (indica que el script cargó)
+            const rgLoaded = (typeof window.renderCartaRG === 'function');
+            const usLoaded = (typeof window.renderCartaUSOPEN === 'function');
+            
+            if (rgLoaded) versionString += ' | RG-Print:v2.2.2';
+            if (usLoaded) versionString += ' | USO-Print:v2.2.2';
+
+            // 4. Asignar al DOM
+            appVersionSpan.textContent = versionString;
         }
+
+        // Inicialización y actualización periódica
         actualizarTextoVersion();
         setInterval(actualizarTextoVersion, 2000);
     </script>
