@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.2-RG";
+    const VERSION = "v2.2.3-RG";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
@@ -62,10 +62,11 @@
                 img.src = 'https://z-cdn-media.chatglm.cn/files/b78052a5-e557-40d5-b6d7-b178fdcb24f0.png?auth_key=1881113482-d01441d334c1427982bb0a78a45f46bd-0-0-60430b647cd3b43f34b5ec212f6640b1';
             }
         } else if (tipo === 'mod') {
+            // MODIFICADO: Rutas corregidas quitando el prefijo "imagenes/" porque están en la raíz
             if (modo === 'usopen') {
-                img.src = 'imagenes/qr-usopen_mod.png';
+                img.src = 'qr-usopen_mod.png';
             } else if (modo === 'rg') {
-                img.src = 'imagenes/qr-code-RG-MOD.png';
+                img.src = 'qr-code-RG-MOD.png';
             }
         }
     };
