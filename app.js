@@ -1,10 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.32'; // Versión incrementada por refactorización dinámica de idiomas
-
-// MODIFICADO: CSV_URL eliminado de aquí, ahora se usa el global provisto por config.js
-// MODIFICADO: IDIOMAS_ORDEN eliminado de aquí, ahora se usa el global provisto por languages.js
+window.APP_VERSIONS.app = '1.0.33'; // Versión incrementada por unificación de lógica de state
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -819,7 +816,7 @@ async function enviarAlExcel() {
     });
     
     try {
-        const urlDestino = getWebAppUrl();
+        const urlDestino = window.getWebAppUrl();
         
         // NUEVO: Logs de depuración en consola nativa (F12) para auditar el envío
         console.log(`[Editor-Debug] Enviando a URL: ${urlDestino}`);
@@ -858,59 +855,8 @@ function toggleActivo(id, v) {
 function abrirSelector() { document.getElementById('modal-selector').style.display = 'block'; }
 function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
 
-// --- SISTEMA DE GESTIÓN DE API KEYS EN LOCAL ---
-function actualizarListaKeys() {
-    if (typeof UI !== 'undefined' && typeof UI.actualizarListaKeys === 'function') {
-        UI.actualizarListaKeys();
-        return;
-    }
-
-    const select = document.getElementById('selectKeys');
-    const keys = getKeys();
-    
-    if (keys.length === 0) {
-        select.innerHTML = '<option value="">No hay API Keys</option>';
-        select.disabled = true;
-        return;
-    }
-    
-    select.disabled = false;
-    select.innerHTML = keys.map((k, i) => {
-        const resumida = `${k.substring(0, 6)}...${k.substring(k.length - 4)}`;
-        return `<option value="${k}">Key ${i + 1}: ${resumida}</option>`;
-    }).join('');
-}
-
-function agregarKey() {
-    const input = document.getElementById('nuevaKey');
-    if (input.value.trim()) {
-        saveKey(input.value.trim());
-        input.value = "";
-        
-        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-            UI.log('[Editor] Nueva API Key agregada con éxito.');
-        }
-        actualizarListaKeys();
-    }
-}
-
-function eliminarKeySeleccionada() {
-    const select = document.getElementById('selectKeys');
-    if (select.value) {
-        deleteKey(select.value);
-        
-        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-            UI.log('[Editor] API Key removida del almacenamiento local.');
-        }
-        actualizarListaKeys();
-    } else {
-        alert("No hay ninguna Key seleccionada para eliminar.");
-    }
-}
-
 // Inicialización automática al cargar la página
 cargar();
-actualizarListaKeys();
 
 // NUEVO: Restringir input de precio a estrictamente 2 decimales
 const editPrecioInput = document.getElementById('edit-precio');
