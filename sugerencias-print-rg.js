@@ -1,12 +1,12 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.4-RG";
+    const VERSION = "v2.2.5-RG";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
     stylePrint.innerHTML = `
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap');
         @page { size: A4; margin: 0; }
         .sugerencias-panel { 
             background: #ffffff !important; padding: 25px 35px !important; width: 210mm !important; 
@@ -32,8 +32,12 @@
         .sugerencias-alergeno-icon { display: inline-block !important; width: 20px !important; height: 20px !important; object-fit: contain !important; vertical-align: middle !important; }
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
-        .sugerencias-footer { margin-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; }
-        .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 6px !important; }
+        
+        /* FOOTER OPTIMIZADO PARA ALINEAR EL QR A LA DERECHA Y SOPORTAR LA ADVERTENCIA */
+        .sugerencias-footer { margin-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: flex-end !important; width: 100% !important; }
+        .sugerencias-advertencia-alergenos { font-size: 0.65rem !important; color: #64748b !important; max-width: 65% !important; line-height: 1.3 !important; text-align: left !important; font-style: italic !important; margin-bottom: 5px !important; }
+        .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 6px !important; margin-left: auto !important; }
+        
         .sugerencias-qr-img { width: 130px !important; height: 130px !important; object-fit: contain !important; }
         .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
         
@@ -47,7 +51,7 @@
 
     window.desglosarNombre = window.desglosarNombre || function(texto) { 
         if (!texto) return { nombre: "", uvas: "" };
-        const partes = texto.split('//');
+        const partes = text.split('//');
         return { nombre: partes[0] ? partes[0].trim() : "", uvas: partes[1] ? partes[1].trim() : "" };
     };
 
@@ -57,15 +61,15 @@
 
         if (modo === 'rg') {
             if (tipo === 'default') {
-                img.src = 'qr-code-RG-MOD.png'; // Oficial para RG
+                img.src = 'qr-code-RG-MOD.png';
             } else if (tipo === 'mod') {
-                img.src = 'qr-code.png'; // Alternativo para RG
+                img.src = 'qr-code.png';
             }
         } else if (modo === 'usopen') {
             if (tipo === 'default') {
-                img.src = 'qr-usopen_oficial.png'; // Oficial para USOPEN
+                img.src = 'qr-usopen_oficial.png';
             } else if (tipo === 'mod') {
-                img.src = 'qr-usopen_mod.png'; // Alternativo para USOPEN
+                img.src = 'qr-usopen_mod.png';
             }
         }
     };
@@ -162,6 +166,10 @@
         html += `
             </div>
             <div class="sugerencias-footer">
+                <div class="sugerencias-advertencia-alergenos">
+                    Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>
+                    If you have any food allergies, please inform our staff.
+                </div>
                 <div class="sugerencias-qr-container">
                     <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none;">
                         Tipo de QR:
