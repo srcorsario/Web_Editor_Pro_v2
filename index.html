@@ -237,7 +237,6 @@
             }
             if (btnElement) btnElement.classList.add('active');
 
-            // Control estricto de entornos de edición y renderizado pasivo aislado
             if (tabId === 'editor') {
                 window.currentMode = 'RG';
                 document.querySelector('.btn-add-float').style.display = 'block';
@@ -268,18 +267,16 @@
             }
         }
 
-        // Inyector visual estático de versiones en la cabecera
-        setInterval(() => {
+        // Función unificada para pintar la versión de forma limpia y sin parpadeos
+        function actualizarTextoVersion() {
             const appVersionSpan = document.getElementById('app-version');
             if (appVersionSpan) {
-                let textoVersion = "v2.2.1";
-                if (typeof window.renderCartaRG === 'function') textoVersion += ' + PRNT-RG';
-                if (typeof window.renderCartaUSOPEN === 'function') textoVersion += ' + PRNT-USO';
-                if (appVersionSpan.textContent !== textoVersion) {
-                    appVersionSpan.textContent = textoVersion;
-                }
+                appVersionSpan.textContent = "v2.2.1 + PRNT-RG v2.2.1-RG + PRNT-USO v2.2.1-USOPEN";
             }
-        }, 1000);
+        }
+        
+        actualizarTextoVersion();
+        setInterval(actualizarTextoVersion, 2000);
     </script>
 </body>
 </html>
