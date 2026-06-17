@@ -1,4 +1,3 @@
-// MODIFICADO: Cambiado a bloque autoejecutable integrado con control de estado inter-pestañas
 (function () {
     'use strict';
 
@@ -158,28 +157,43 @@
     }
 
     function cargarCarta() {
+        // MODIFICADO: Leemos dinámicamente el modo actual en el instante exacto de ejecución del render
         const isUsOpen = window.currentMode === 'USOPEN';
+        let fuenteDatos = [];
 
-        // MODIFICADO: Sincronización proactiva y defensiva del origen de datos.
-        // Si el usuario salta directo a la pestaña 5 sin pasar por la 4, forzamos la lectura desde el store del localstorage o del estado persistente del contenedor USOpen.
-        let fuenteDatos = (typeof datosLocales !== 'undefined') ? datosLocales : [];
-        
-        if (isUsOpen && window.activeStateContainer && window.activeStateContainer.csvDataUSOPEN) {
-            fuenteDatos = window.activeStateContainer.csvDataUSOPEN;
-        } else if (isUsOpen && localStorage.getItem('csvData_USOPEN')) {
-            try {
-                fuenteDatos = JSON.parse(localStorage.getItem('csvData_USOPEN'));
-            } catch(e) {
-                console.error("Error al restaurar lote USOPEN desde almacenamiento local:", e);
+        // MODIFICADO: Forzamos la separación total e inequívoca de orígenes según el torneo activo
+        if (isUsOpen) {
+            if (window.activeStateContainer && window.activeStateContainer.csvDataUSOPEN) {
+                fuenteDatos = window.activeStateContainer.csvDataUSOPEN;
+            } else if (localStorage.getItem('csvData_USOPEN')) {
+                try {
+                    fuenteDatos = JSON.parse(localStorage.getItem('csvData_USOPEN'));
+                } catch(e) {
+                    console.error("Error al desempaquetar lote USOPEN:", e);
+                }
+            }
+        } else {
+            // Roland Garros / Por defecto
+            if (typeof datosLocales !== 'undefined') {
+                fuenteDatos = datosLocales;
+            } else if (localStorage.getItem('csvData')) {
+                try {
+                    fuenteDatos = JSON.parse(localStorage.getItem('csvData'));
+                } catch(e) {
+                    console.error("Error al desempaquetar lote RG:", e);
+                }
             }
         }
 
         const statusCarga = document.getElementById('status-carga');
         const isLoaded = statusCarga && statusCarga.innerText.includes('✅');
 
-        if (!fuenteDatos || (fuenteDatos.length === 0 && !isLoaded)) { 
-            setTimeout(cargarCarta, 500); 
-            return; 
+        if (!fuenteDatos || fuenteDatos.length === 0) { 
+            // Si la web acaba de cargar y no encuentra datos listos, espera un instante
+            if (!isLoaded) {
+                setTimeout(cargarCarta, 300); 
+                return;
+            }
         }
         
         const contenedorId = isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
@@ -187,7 +201,13 @@
         
         if (!contenedor) return;
 
-        // MODIFICADO: Se filtran los platos utilizando la fuente de datos correcta unificada
+        // Limpieza de seguridad del contenedor opuesto para evitar mezclas visuales
+        const contenedorOpuestoId = isUsOpen ? 'sugerencias-contenido' : 'sugerencias-contenido-usopen';
+        const contenedorOpuesto = document.getElementById(contenedorOpuestoId);
+        if (contenedorOpuesto && contenedorOpuesto.innerHTML !== '') {
+            contenedorOpuesto.innerHTML = ''; 
+        }
+
         const platosActivos = fuenteDatos.filter(p => p.activa && p.id >= 12000 && p.id <= 12999);
 
         let entrantes = [];
