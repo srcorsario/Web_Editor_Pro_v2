@@ -156,6 +156,7 @@
         return iconsHtml;
     }
 
+    // MODIFICADO: Eliminamos dependencias de window.currentMode dentro del renderizador para que pinte estrictamente lo que se le pide.
     function cargarCartaPorModo(modoObjetivo) {
         const isUsOpen = modoObjetivo === 'USOPEN';
         let fuenteDatos = [];
@@ -187,13 +188,10 @@
         const contenedorId = isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
         const contenedor = document.getElementById(contenedorId);
         
-        // MODIFICADO: Si el contenedor de la pestaña no está en el DOM en este instante, esperamos brevemente a que la pestaña termine de renderizarse
-        if (!contenedor) {
-            setTimeout(() => cargarCartaPorModo(modoObjetivo), 50);
-            return;
-        }
+        // Si la pestaña no está montada en el DOM, no hacemos nada hasta que el usuario haga click en ella.
+        if (!contenedor) return;
 
-        // Si la fuente está vacía (por ejemplo, arranque inicial del sistema), reintentamos controladamente
+        // Si la fuente está vacía (por ejemplo, arranque inicial del sistema), esperamos a que se cargue el CSV.
         if (!fuenteDatos || fuenteDatos.length === 0) {
             setTimeout(() => cargarCartaPorModo(modoObjetivo), 300);
             return;
@@ -306,10 +304,26 @@
         }
     }
 
-    // MODIFICADO: Orquestador maestro que lee dinámicamente y bajo demanda el modo al pulsar la pestaña correspondiente.
+    // MODIFICADO: Orquestador central inteligente que renderiza de manera estricta según el modo actual de la sesión.
     function cargarCarta() {
         const modoActual = window.currentMode || 'RG';
         cargarCartaPorModo(modoActual);
+    }
+
+    // NUEVO: Escuchador reactivo global al cambio de pestañas/tabs del DOM.
+    // Esto asegura que al pulsar la pestaña 2 se fuerce 'RG' y al pulsar la pestaña 5 se fuerce 'USOPEN' instantáneamente.
+    function adjuntarEventosTabs() {
+        document.querySelectorAll('.tab, .nav-link, [role="tab"], button').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Pequeña tregua para que el contenedor destino se pinte en el DOM
+                setTimeout(() => {
+                    const modoActual = window.currentMode || 'RG';
+                    // Renderizamos de forma cruzada y aislada para que la pestaña activa no rompa a la otra
+                    cargarCartaPorModo('RG');
+                    cargarCartaPorModo('USOPEN');
+                }, 80);
+            });
+        });
     }
 
     window.imprimirSugerenciasA4 = function() {
@@ -423,6 +437,10 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
-    // Ejecución inicial reactiva según el entorno que esté listo por defecto
+    // Ejecuciones e inicializaciones reactivas inmediatas
     cargarCarta();
+    adjuntarEventosTabs();
+    
+    // Respaldo por si las pestañas tardan en crearse en el árbol DOM principal
+    document.addEventListener('DOMContentLoaded', adjuntarEventosTabs);
 })();
