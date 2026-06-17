@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Editor Pro</title>
+    <link rel="icon" href="setting.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="header-admin">
+            <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
+            <div id="status-carga" class="status-ok">⏳ Conectando...</div>
+            
+            <div class="api-keys-manager">
+                <label class="label-seccion">Gestión de API Keys Gemini</label>
+                <div class="api-keys-inputs">
+                    <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar">
+                    <button id="addKeyBtn" class="btn-add-key">Añadir Key</button>
+                </div>
+                <div class="api-keys-list">
+                    <div id="contenedorSelectKeys" class="flex-1">
+                        <select id="selectKeys" class="select-keys"></select>
+                    </div>
+                    <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key">✕</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs-container">
+            <button class="tab-btn active" onclick="switchTab('editor', this)">📋 Editor de Menú</button>
+            <button class="tab-btn" onclick="switchTab('pro', this)">🛠️ Traductor Pro & Ajustes</button>
+            <button class="tab-btn" onclick="switchTab('sugerencias', this)">📝 Sugerencias del Día</button>
+        </div>
+
+        <div id="tab-editor" class="tab-content active">
+            <div id="editor-dinamico"></div>
+        </div>
+
+        <div id="tab-pro" class="tab-content pro-panel" style="display: none;">
+            
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                
+                <div class="card md:w-3/10 flex-none flex flex-col justify-between h-[310px]" style="width: 30%; min-width: 340px;">
+                    <div class="space-y-1.5">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">1. Orígenes de Datos</h3>
+                        
+                        <div class="grid grid-cols-1 gap-1 text-sm">
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs whitespace-nowrap">CSV Local:</label>
+                                <input type="file" id="archivoLocal" accept=".csv" class="text-xs flex-1 p-0.5">
+                            </div>
+                            <div class="flex gap-1.5">
+                                <input type="text" id="sheetsUrl" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv" placeholder="URL CSV de Google Sheets..." class="flex-1 text-xs py-1 px-2">
+                                <button id="loadSheetsBtn" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-1.5 space-y-1.5 mt-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-medium">Rango de Filas:</span>
+                            <div class="flex items-center gap-2">
+                                <label class="text-slate-400">Desde: <input type="number" id="rangoInicio" value="2" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
+                                <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-1.5 text-xs">
+                            <button id="btnIniciar" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase">Iniciar Traducción</button>
+                            <button id="btnPausa" class="btn btn-secondary font-bold py-1 px-1 uppercase">Pausar</button>
+                            <button id="btnCancelar" class="btn btn-danger font-bold py-1 px-1 uppercase">Cancelar</button>
+                            <button id="saveCsvBtn" class="btn btn-primary font-bold py-1 px-1 text-[11px] whitespace-nowrap uppercase">Descargar CSV</button>
+                        </div>
+                        
+                        <button id="btnSyncSheets" class="btn btn-success font-bold py-2 px-1 text-[11px] tracking-tight uppercase w-full col-span-2 mt-1 border border-emerald-400" style="grid-column: span 2;">
+                            ☁️ Sincronizar con Google Sheet
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card md:w-1/5 flex-none flex flex-col h-[310px]" style="width: 20%; min-width: 200px">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">2. Idioma Vista</h3>
+                    <div id="radiosIdiomas" class="w-full overflow-y-auto pr-1 flex-1"></div>
+                </div>
+
+                <div class="card flex-1 md:w-1/2 c-consola flex flex-col h-[310px]" style="width: 50%;">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">3. Monitor de Sistema</h3>
+                    <div id="consola"></div>
+                </div>
+
+            </div>
+
+            <div class="card overflow-x-auto">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Previsualización de Datos en Memoria</h3>
+                <div class="max-h-[580px] overflow-y-auto">
+                    <table class="w-full">
+                        <thead id="tableHeadRow" class="sticky top-0 z-10"></thead>
+                        <tbody id="tablaBody" class="text-sm text-slate-300">
+                            <tr>
+                                <td colspan="4" class="text-center py-8 text-slate-500 italic">Ningún archivo cargado en el sistema. Selecciona un origen arriba.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="tab-sugerencias" class="tab-content" style="display: none;">
+            <div class="sugerencias-panel">
+                </div>
+        </div>
+
+    </div>
+
+    <button class="btn-add-float" onclick="abrirSelector()">+</button>
+    <button class="btn-guardar-main" onclick="enviarAlExcel()">GUARDAR CAMBIOS EN WEB</button>
+
+    <div id="modal-selector" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-top:0;">Añadir Nuevo Plato</h2>
+            <div id="lista-agrupada"></div>
+            <button class="btn-modal-cancelar" onclick="cerrarModal('modal-selector')" style="margin-top:20px;">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="modal-editor" class="modal">
+        <div class="modal-content modal-full-layout">
+            
+            <div class="modal-col-izquierda">
+                <div class="input-group">
+                    <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
+                    <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
+                    <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
+                </div>
+                
+                <div class="input-group">
+                    <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
+                    <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
+                    <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
+                </div>
+
+                <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
+
+                <div class="input-group">
+                    <label class="label-seccion">Resto de Idiomas</label>
+                    <div id="contenedor-resto-idiomas"></div>
+                </div>
+            </div>
+
+            <div class="modal-col-derecha">
+                <div class="input-group">
+                    <label class="label-seccion">Configuración</label>
+                    <div class="panel-control-precio">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Precio (€)</label>
+                            <input id="edit-precio" type="number" step="0.01" class="input-estandar input-precio-super-mini input-precio-mini">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Nombre Imagen</label>
+                            <input id="edit-imagen" class="input-estandar input-imagen-flexible" placeholder="ej: paella01.webp">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="label-seccion">Alérgenos</label>
+                    <div id="alergenos-grid" class="alergenos-grid"></div>
+                </div>
+
+                <div id="contenedor-croquetas"></div>
+
+                <div class="modal-acciones-footer">
+                    <button class="btn-modal-aceptar" onclick="aplicarCambiosPlato()">✅ Aplicar Cambios</button>
+                    <button class="btn-modal-cancelar" onclick="cerrarModal('modal-editor')">Cancelar</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal-traduccion-en" class="modal">
+        <div class="modal-content modal-box-en">
+            <h2 style="margin-top:0; margin-bottom: 10px;">Selecciona la mejor traducción al Inglés</h2>
+            <div id="opciones-en-container" class="opciones-en-scroll"></div>
+            <div class="footer-box-en">
+                <textarea id="editar-opcion-en" class="input-estandar" rows="3" placeholder="Puedes editar la opción seleccionada aquí antes de confirmar..."></textarea>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-modal-aceptar" onclick="confirmarTraduccionEN()" style="margin:0;">Confirmar Selección</button>
+                    <button class="btn-modal-cancelar" onclick="cerrarModalTraduccionEN()" style="margin:0;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODIFICADO: Orden de carga de scripts ajustado para incluir config.js primero -->
+    <script src="config.js"></script>
+    <script src="languages.js"></script>
+    <script src="state.js"></script>
+    <script src="app.js"></script>
+    <script type="module" src="ui.js"></script>
+    <script src="sugerencias-print.js"></script>
+
+    <script>
+        // Lógica nativa de Pestañas (Tabs)
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+                el.style.display = 'none';
+            });
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('tab-' + tabId).style.display = 'block';
+            btnElement.classList.add('active');
+
+            if (tabId === 'editor') {
+                document.querySelector('.btn-add-float').style.display = 'block';
+                document.querySelector('.btn-guardar-main').style.display = 'block';
+            } else {
+                if (document.querySelector('.btn-add-float')) document.querySelector('.btn-add-float').style.display = 'none';
+                if (document.querySelector('.btn-guardar-main')) document.querySelector('.btn-guardar-main').style.display = 'none';
+            }
+
+            // MODIFICADO: Puente inteligente y seguro para forzar el renderizado real de la hoja A4
+            if (tabId === 'sugerencias') {
+                // 1. Intentamos ejecutar la función global de renderizado si el script la expuso abiertamente
+                if (typeof renderizarSugerencias === 'function') {
+                    renderizarSugerencias();
+                } 
+                // 2. Si el script viene empaquetado de forma aislada, despertamos su inicializador secundario mediante eventos nativos
+                else {
+                    const event = new Event('DOMContentLoaded');
+                    document.dispatchEvent(event);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
