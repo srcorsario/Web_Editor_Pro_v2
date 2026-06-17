@@ -156,12 +156,10 @@
         return iconsHtml;
     }
 
-    // MODIFICADO: Ahora pasamos explícitamente el modo por parámetro para romper la dependencia de estados cruzados reactivos de la UI
     function cargarCartaPorModo(modoObjetivo) {
         const isUsOpen = modoObjetivo === 'USOPEN';
         let fuenteDatos = [];
 
-        // MODIFICADO: Aislamiento absoluto del set de datos. Si no hay datos en memoria por no pisar la pestaña 4, se extrae directo del Storage de respaldo de forma síncrona
         if (isUsOpen) {
             if (window.activeStateContainer && window.activeStateContainer.csvDataUSOPEN) {
                 fuenteDatos = window.activeStateContainer.csvDataUSOPEN;
@@ -188,9 +186,14 @@
 
         const contenedorId = isUsOpen ? 'sugerencias-contenido-usopen' : 'sugerencias-contenido';
         const contenedor = document.getElementById(contenedorId);
-        if (!contenedor) return;
+        
+        // MODIFICADO: Si el contenedor de la pestaña no está en el DOM en este instante, esperamos brevemente a que la pestaña termine de renderizarse
+        if (!contenedor) {
+            setTimeout(() => cargarCartaPorModo(modoObjetivo), 50);
+            return;
+        }
 
-        // Si la fuente sigue vacía porque la app no ha terminado su bootstrap inicial, reintentamos puntualmente
+        // Si la fuente está vacía (por ejemplo, arranque inicial del sistema), reintentamos controladamente
         if (!fuenteDatos || fuenteDatos.length === 0) {
             setTimeout(() => cargarCartaPorModo(modoObjetivo), 300);
             return;
@@ -303,7 +306,7 @@
         }
     }
 
-    // MODIFICADO: Orquestador maestro inteligente. Renderiza la vista solicitada de forma asíncrona pero aislada.
+    // MODIFICADO: Orquestador maestro que lee dinámicamente y bajo demanda el modo al pulsar la pestaña correspondiente.
     function cargarCarta() {
         const modoActual = window.currentMode || 'RG';
         cargarCartaPorModo(modoActual);
@@ -420,7 +423,6 @@
     window.renderSugerenciasLogic = cargarCarta;
     window.renderizarSugerencias = cargarCarta;
 
-    // MODIFICADO: Forzamos el renderizado en paralelo inicial de ambos contenedores para asegurar disponibilidad inmediata
-    cargarCartaPorModo('RG');
-    cargarCartaPorModo('USOPEN');
+    // Ejecución inicial reactiva según el entorno que esté listo por defecto
+    cargarCarta();
 })();
