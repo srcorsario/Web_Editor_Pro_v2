@@ -248,6 +248,8 @@
                 window.currentMode = 'RG';
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
+                // MODIFICADO: Forzar recarga de datos RG para evitar contaminación con USOpen
+                cargar();
                 if (typeof window.renderSugerenciasLogic === 'function') {
                     window.renderSugerenciasLogic();
                 }
@@ -262,6 +264,8 @@
                 window.currentMode = 'USOPEN';
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
+                // MODIFICADO: Forzar recarga de datos USOPEN para evitar contaminación con RG
+                cargar();
                 if (typeof window.renderSugerenciasLogic === 'function') {
                     window.renderSugerenciasLogic();
                 }
