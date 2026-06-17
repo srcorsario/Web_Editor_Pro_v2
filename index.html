@@ -222,31 +222,38 @@
     <script src="sugerencias-print-usopen.js"></script>
 
     <script>
-        // Lógica nativa de Pestañas (Tabs) Corregida
+        // Lógica de Pestañas (Tabs) Segura y Antibucle
         function switchTab(tabId, btnElement) {
+            // Ocultar todos los contenidos de pestaña de forma limpia
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.remove('active');
                 el.style.display = 'none';
             });
+            
+            // Desactivar todos los botones de la interfaz
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             
-            document.getElementById('tab-' + tabId).classList.add('active');
-            document.getElementById('tab-' + tabId).style.display = 'block';
-            btnElement.classList.add('active');
+            // Activar la pestaña y el botón actual seleccionado
+            const contenedorDestino = document.getElementById('tab-' + tabId);
+            if (contenedorDestino) {
+                contenedorDestino.classList.add('active');
+                contenedorDestino.style.display = 'block';
+            }
+            if (btnElement) btnElement.classList.add('active');
 
-            // GESTIÓN TOTALMENTE AISLADA DE ENTORNO
+            // Asignación controlada de modos sin ejecuciones cíclicas en cascada
             if (tabId === 'editor') {
                 window.currentMode = 'RG';
                 document.querySelector('.btn-add-float').style.display = 'block';
                 document.querySelector('.btn-guardar-main').style.display = 'block';
-                cargar(); 
+                if (typeof window.cargar === 'function') window.cargar(); 
             } 
             else if (tabId === 'sugerencias') {
                 window.currentMode = 'RG';
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
-                cargar();
-                // MODIFICADO: Ejecuta el disparador específico de la carta RG
+                
+                // Disparador directo y seguro para renderizar el HTML de la carta tradicional
                 if (typeof window.renderCartaRG === 'function') {
                     window.renderCartaRG();
                 }
@@ -255,14 +262,14 @@
                 window.currentMode = 'USOPEN';
                 document.querySelector('.btn-add-float').style.display = 'block';
                 document.querySelector('.btn-guardar-main').style.display = 'block';
-                cargar(); 
+                if (typeof window.cargar === 'function') window.cargar(); 
             }
             else if (tabId === 'sugerencias-usopen') {
                 window.currentMode = 'USOPEN';
                 document.querySelector('.btn-add-float').style.display = 'none';
                 document.querySelector('.btn-guardar-main').style.display = 'none';
-                cargar();
-                // MODIFICADO: Ejecuta el disparador específico de la carta USOPEN sin pisar la de RG
+                
+                // Disparador directo y seguro para renderizar el HTML de la carta UsOpen
                 if (typeof window.renderCartaUSOPEN === 'function') {
                     window.renderCartaUSOPEN();
                 }
