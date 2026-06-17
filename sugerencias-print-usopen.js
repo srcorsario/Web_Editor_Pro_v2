@@ -1,12 +1,7 @@
-=========================================
-REPOSITORIO: Web_Editor_Pro_v2 (PRINCIPAL)
-ARCHIVO: sugerencias-print-usopen.js
-=========================================
 (function () {
     'use strict';
 
     const VERSION = "v2.2.2-USOPEN";
-    
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -43,16 +38,13 @@ ARCHIVO: sugerencias-print-usopen.js
         .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
         
         .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
-        
         .sugerencias-qr-img { transition: opacity 0.3s; }
-        .sugerencias-qr-img:hover { opacity: 1.0; }
 
         .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
         @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper { display: none !important; } }
     `;
     document.head.appendChild(stylePrintUsOpen);
 
-    // NUEVO: Definición completa y limpia de la función renderCartaUSOPEN
     function renderCartaUSOPEN() {
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
@@ -70,7 +62,7 @@ ARCHIVO: sugerencias-print-usopen.js
         }
 
         if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-sugerencias-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
+            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
             return;
         }
 
@@ -141,7 +133,6 @@ ARCHIVO: sugerencias-print-usopen.js
         html += renderCat("POSTRES / DESSERTS", postres, "sugerencias-seccion-postres");
         html += renderCat("BODEGA / WINE CELLAR", vinos, "sugerencias-seccion-vinos");
 
-        // MODIFICADO: Inyección del selector de botones radio para USOPEN (Pestaña 5)
         html += `
             </div>
             <div class="sugerencias-footer">
