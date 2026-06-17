@@ -138,6 +138,8 @@
 
     <script>
         function switchTab(tabId, btnElement) {
+            console.log(`%c[SWITCH] Click en Tab: ${tabId}`, "background: #222; color: #bada55; font-size: 14px; padding: 4px;");
+            
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.remove('active');
                 el.style.display = 'none';
@@ -154,22 +156,36 @@
             if (tabId.includes('usopen')) window.currentMode = 'USOPEN';
             else if (tabId.includes('editor') || tabId.includes('sugerencias')) window.currentMode = 'RG';
 
+            console.log(`[SWITCH] window.currentMode establecido en: ${window.currentMode}`);
+
             const esEditor = tabId.includes('editor');
             document.querySelector('.btn-add-float').style.display = esEditor ? 'block' : 'none';
             document.querySelector('.btn-guardar-main').style.display = esEditor ? 'block' : 'none';
 
-            // CORRECCIÓN: Para las pestañas de sugerencias, forzamos la recarga de datos antes de renderizar
+            // --- LOGS DE DEPURACIÓN Y CARGA ASÍNCRONA ---
             if (tabId === 'sugerencias' && typeof window.renderCartaRG === 'function') {
+                console.log("[SWITCH] Entrando en lógica de Sugerencias RG");
                 if (typeof window.cargar === 'function') {
-                    window.cargar().then(() => window.renderCartaRG());
+                    console.log("[SWITCH] Llamando a window.cargar()...");
+                    window.cargar().then(() => {
+                        console.log(`[SWITCH] cargar() finalizada. Items en memoria: ${window.datosLocales ? window.datosLocales.length : 0}`);
+                        window.renderCartaRG();
+                    }).catch(err => console.error("[ERROR] Falló cargar():", err));
                 } else {
+                    console.warn("[SWITCH] window.cargar NO EXISTE. Renderizando con datos actuales.");
                     window.renderCartaRG();
                 }
             }
             else if (tabId === 'sugerencias-usopen' && typeof window.renderCartaUSOPEN === 'function') {
+                console.log("[SWITCH] Entrando en lógica de Sugerencias USOPEN");
                 if (typeof window.cargar === 'function') {
-                    window.cargar().then(() => window.renderCartaUSOPEN());
+                    console.log("[SWITCH] Llamando a window.cargar()...");
+                    window.cargar().then(() => {
+                        console.log(`[SWITCH] cargar() finalizada. Items en memoria: ${window.datosLocales ? window.datosLocales.length : 0}`);
+                        window.renderCartaUSOPEN();
+                    }).catch(err => console.error("[ERROR] Falló cargar():", err));
                 } else {
+                    console.warn("[SWITCH] window.cargar NO EXISTE. Renderizando con datos actuales.");
                     window.renderCartaUSOPEN();
                 }
             }
@@ -180,14 +196,13 @@
             const appVersionSpan = document.getElementById('app-version');
             if (!appVersionSpan) return;
 
-            // 1. Leer versiones centrales desde el objeto global (populado por ui.js y otros scripts)
+            // 1. Leer versiones centrales desde el objeto global
             const v = window.APP_VERSIONS || {};
             
-            // 2. Construir string base con abreviaturas para ahorrar espacio si es necesario
-            // c:config, a:app, l:lang, s:state, u:ui
+            // 2. Construir string base
             let versionString = `cfg:${v.config || '?'} app:${v.app || '?'} lng:${v.lang || '?'} st:${v.state || '?'} ui:${v.ui || '?'} css:${v.css || '?'}`;
 
-            // 3. Añadir versiones de scripts de impresión si las funciones están disponibles (indica que el script cargó)
+            // 3. Añadir versiones de scripts de impresión si las funciones están disponibles
             const rgLoaded = (typeof window.renderCartaRG === 'function');
             const usLoaded = (typeof window.renderCartaUSOPEN === 'function');
             
