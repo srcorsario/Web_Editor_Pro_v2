@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.2.5-USOPEN";
+    const VERSION = "v2.2.6-USOPEN";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -33,7 +33,6 @@
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
         
-        /* FOOTER OPTIMIZADO PARA ALINEAR EL QR A LA DERECHA Y SOPORTAR LA ADVERTENCIA */
         .sugerencias-footer { margin-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: flex-end !important; width: 100% !important; }
         .sugerencias-advertencia-alergenos { font-size: 0.65rem !important; color: #64748b !important; max-width: 65% !important; line-height: 1.3 !important; text-align: left !important; font-style: italic !important; margin-bottom: 5px !important; }
         .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 6px !important; margin-left: auto !important; }
@@ -99,7 +98,8 @@
                     <div class="sugerencias-title-es">SUGERENCIAS DEL CHEF</div>
                     <div class="sugerencias-title-en">CHEF'S SUGGESTIONS</div>
                 </div>
-                <img src="logo RG_REST.png" class="sugerencias-logo-img" onerror="this.src='https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';">
+                <!-- MODIFICADO: Uso de la imagen de marca correspondiente a USOPEN -->
+                <img src="USOPEN_REST.png" class="sugerencias-logo-img" onerror="this.src='https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';">
             </div>
             <div class="${postres.length === 0 ? 'sugerencias-body no-postres' : 'sugerencias-body'}">
         `;
@@ -141,7 +141,7 @@
             </div>
             <div class="sugerencias-footer">
                 <div class="sugerencias-advertencia-alergenos">
-                    Si usted tiene algún tipo de alerta alimentaria, por favor comuníquelo a nuestro personal.<br>
+                    Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>
                     If you have any food allergies, please inform our staff.
                 </div>
                 <div class="sugerencias-qr-container">
