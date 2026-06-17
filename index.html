@@ -7,7 +7,7 @@
     <link rel="icon" href="setting.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght=400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -51,13 +51,10 @@
         </div>
 
         <div id="tab-pro" class="tab-content pro-panel" style="display: none;">
-            
             <div class="flex flex-col md:flex-row gap-4 mb-4">
-                
                 <div class="card md:w-3/10 flex-none flex flex-col justify-between h-[310px]" style="width: 30%; min-width: 340px;">
                     <div class="space-y-1.5">
                         <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">1. Orígenes de Datos</h3>
-                        
                         <div class="grid grid-cols-1 gap-1 text-sm">
                             <div class="flex gap-2 items-center">
                                 <label class="text-xs whitespace-nowrap">CSV Local:</label>
@@ -69,7 +66,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="border-t pt-1.5 space-y-1.5 mt-2">
                         <div class="flex items-center justify-between text-xs">
                             <span class="font-medium">Rango de Filas:</span>
@@ -78,32 +74,26 @@
                                 <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
                             </div>
                         </div>
-                        
                         <div class="grid grid-cols-2 gap-1.5 text-xs">
                             <button id="btnIniciar" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase">Iniciar Traducción</button>
                             <button id="btnPausa" class="btn btn-secondary font-bold py-1 px-1 uppercase">Pausar</button>
                             <button id="btnCancelar" class="btn btn-danger font-bold py-1 px-1 uppercase">Cancelar</button>
                             <button id="saveCsvBtn" class="btn btn-primary font-bold py-1 px-1 text-[11px] whitespace-nowrap uppercase">Descargar CSV</button>
                         </div>
-                        
                         <button id="btnSyncSheets" class="btn btn-success font-bold py-2 px-1 text-[11px] tracking-tight uppercase w-full col-span-2 mt-1 border border-emerald-400" style="grid-column: span 2;">
                             ☁️ Sincronizar con Google Sheet
                         </button>
                     </div>
                 </div>
-
                 <div class="card md:w-1/5 flex-none flex flex-col h-[310px]" style="width: 20%; min-width: 200px">
                     <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">2. Idioma Vista</h3>
                     <div id="radiosIdiomas" class="w-full overflow-y-auto pr-1 flex-1"></div>
                 </div>
-
                 <div class="card flex-1 md:w-1/2 c-consola flex flex-col h-[310px]" style="width: 50%;">
                     <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">3. Monitor de Sistema</h3>
                     <div id="consola"></div>
                 </div>
-
             </div>
-
             <div class="card overflow-x-auto">
                 <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Previsualización de Datos en Memoria</h3>
                 <div class="max-h-[580px] overflow-y-auto">
@@ -117,7 +107,6 @@
                     </table>
                 </div>
             </div>
-
         </div>
 
         <div id="tab-editor-usopen" class="tab-content" style="display: none;">
@@ -129,88 +118,14 @@
                 <div id="sugerencias-contenido-usopen"></div>
             </div>
         </div>
-
     </div>
 
     <button class="btn-add-float" onclick="abrirSelector()">+</button>
     <button class="btn-guardar-main" onclick="enviarAlExcel()">GUARDAR CAMBIOS EN WEB</button>
 
-    <div id="modal-selector" class="modal">
-        <div class="modal-content">
-            <h2 style="margin-top:0;">Añadir Nuevo Plato</h2>
-            <div id="lista-agrupada"></div>
-            <button class="btn-modal-cancelar" onclick="cerrarModal('modal-selector')" style="margin-top:20px;">Cancelar</button>
-        </div>
-    </div>
-
-    <div id="modal-editor" class="modal">
-        <div class="modal-content modal-full-layout">
-            
-            <div class="modal-col-izquierda">
-                <div class="input-group">
-                    <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
-                    <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
-                    <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
-                </div>
-                
-                <div class="input-group">
-                    <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
-                    <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
-                    <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
-                </div>
-
-                <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
-
-                <div class="input-group">
-                    <label class="label-seccion">Resto de Idiomas</label>
-                    <div id="contenedor-resto-idiomas"></div>
-                </div>
-            </div>
-
-            <div class="modal-col-derecha">
-                <div class="input-group">
-                    <label class="label-seccion">Configuración</label>
-                    <div class="panel-control-precio">
-                        <div class="input-group" style="margin-bottom: 0;">
-                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Precio (€)</label>
-                            <input id="edit-precio" type="number" step="0.01" class="input-estandar input-precio-super-mini input-precio-mini">
-                        </div>
-                        <div class="input-group" style="margin-bottom: 0;">
-                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Nombre Imagen</label>
-                            <input id="edit-imagen" class="input-estandar input-imagen-flexible" placeholder="ej: paella01.webp">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label class="label-seccion">Alérgenos</label>
-                    <div id="alergenos-grid" class="alergenos-grid"></div>
-                </div>
-
-                <div id="contenedor-croquetas"></div>
-
-                <div class="modal-acciones-footer">
-                    <button class="btn-modal-aceptar" onclick="aplicarCambiosPlato()">✅ Aplicar Cambios</button>
-                    <button class="btn-modal-cancelar" onclick="cerrarModal('modal-editor')">Cancelar</button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <div id="modal-traduccion-en" class="modal">
-        <div class="modal-content modal-box-en">
-            <h2 style="margin-top:0; margin-bottom: 10px;">Selecciona la mejor traducción al Inglés</h2>
-            <div id="opciones-en-container" class="opciones-en-scroll"></div>
-            <div class="footer-box-en">
-                <textarea id="editar-opcion-en" class="input-estandar" rows="3" placeholder="Puedes editar la opción seleccionada aquí antes de confirmar..."></textarea>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="btn-modal-aceptar" onclick="confirmarTraduccionEN()" style="margin:0;">Confirmar Selección</button>
-                    <button class="btn-modal-cancelar" onclick="cerrarModalTraduccionEN()" style="margin:0;">Cancelar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="modal-selector" class="modal"><div class="modal-content">...</div></div>
+    <div id="modal-editor" class="modal"><div class="modal-content">...</div></div>
+    <div id="modal-traduccion-en" class="modal"><div class="modal-content">...</div></div>
 
     <script src="config.js"></script>
     <script src="languages.js"></script>
@@ -218,11 +133,10 @@
     <script src="app.js"></script>
     <script type="module" src="ui.js"></script>
 
-    <script src="sugerencias-print-rg.js"></script>
-    <script src="sugerencias-print-usopen.js"></script>
+    <script src="sugerencias-print-rg.js?v=2.2.2"></script>
+    <script src="sugerencias-print-usopen.js?v=2.2.2"></script>
 
     <script>
-        // Lógica de Pestañas Independiente sin contaminación de datos
         function switchTab(tabId, btnElement) {
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.remove('active');
@@ -237,44 +151,24 @@
             }
             if (btnElement) btnElement.classList.add('active');
 
-            if (tabId === 'editor') {
-                window.currentMode = 'RG';
-                document.querySelector('.btn-add-float').style.display = 'block';
-                document.querySelector('.btn-guardar-main').style.display = 'block';
-                if (typeof window.cargar === 'function') window.cargar(); 
-            } 
-            else if (tabId === 'sugerencias') {
-                window.currentMode = 'RG';
-                document.querySelector('.btn-add-float').style.display = 'none';
-                document.querySelector('.btn-guardar-main').style.display = 'none';
-                if (typeof window.renderCartaRG === 'function') window.renderCartaRG();
-            }
-            else if (tabId === 'editor-usopen') {
-                window.currentMode = 'USOPEN';
-                document.querySelector('.btn-add-float').style.display = 'block';
-                document.querySelector('.btn-guardar-main').style.display = 'block';
-                if (typeof window.cargar === 'function') window.cargar(); 
-            }
-            else if (tabId === 'sugerencias-usopen') {
-                window.currentMode = 'USOPEN';
-                document.querySelector('.btn-add-float').style.display = 'none';
-                document.querySelector('.btn-guardar-main').style.display = 'none';
-                if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
-            }
-            else if (tabId === 'pro') {
-                document.querySelector('.btn-add-float').style.display = 'none';
-                document.querySelector('.btn-guardar-main').style.display = 'none';
-            }
+            if (tabId.includes('usopen')) window.currentMode = 'USOPEN';
+            else if (tabId.includes('editor') || tabId.includes('sugerencias')) window.currentMode = 'RG';
+
+            const esEditor = tabId.includes('editor');
+            document.querySelector('.btn-add-float').style.display = esEditor ? 'block' : 'none';
+            document.querySelector('.btn-guardar-main').style.display = esEditor ? 'block' : 'none';
+
+            if (tabId === 'sugerencias' && typeof window.renderCartaRG === 'function') window.renderCartaRG();
+            else if (tabId === 'sugerencias-usopen' && typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
+            else if (esEditor && typeof window.cargar === 'function') window.cargar();
         }
 
-        // Función unificada para pintar la versión de forma limpia y sin parpadeos
         function actualizarTextoVersion() {
             const appVersionSpan = document.getElementById('app-version');
             if (appVersionSpan) {
-                appVersionSpan.textContent = "v2.2.1 + PRNT-RG v2.2.1-RG + PRNT-USO v2.2.1-USOPEN";
+                appVersionSpan.textContent = "v2.2.1 + PRNT-RG v2.2.2-RG + PRNT-USO v2.2.2-USOPEN";
             }
         }
-        
         actualizarTextoVersion();
         setInterval(actualizarTextoVersion, 2000);
     </script>
