@@ -6,7 +6,7 @@
 
     const stylePrint = document.createElement('style');
     stylePrint.innerHTML = `
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
         @page { size: A4; margin: 0; }
         .sugerencias-panel { 
             background: #ffffff !important; padding: 25px 35px !important; width: 210mm !important; 
@@ -33,7 +33,6 @@
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; }
         
-        /* FOOTER OPTIMIZADO PARA ALINEAR EL QR A LA DERECHA Y SOPORTAR LA ADVERTENCIA */
         .sugerencias-footer { margin-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: flex-end !important; width: 100% !important; }
         .sugerencias-advertencia-alergenos { font-size: 0.65rem !important; color: #64748b !important; max-width: 65% !important; line-height: 1.3 !important; text-align: left !important; font-style: italic !important; margin-bottom: 5px !important; }
         .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 6px !important; margin-left: auto !important; }
@@ -51,7 +50,7 @@
 
     window.desglosarNombre = window.desglosarNombre || function(texto) { 
         if (!texto) return { nombre: "", uvas: "" };
-        const partes = text.split('//');
+        const partes = texto.split('//');
         return { nombre: partes[0] ? partes[0].trim() : "", uvas: partes[1] ? partes[1].trim() : "" };
     };
 
