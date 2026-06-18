@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.5.0-RG-Wine-Only-Opt";
+    const VERSION = "v2.6.0-RG-Polling";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
@@ -11,11 +11,11 @@
         .sugerencias-panel { 
             background: #ffffff !important; padding: 20px 30px !important; width: 210mm !important; 
             min-height: 297mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important;
-            box-sizing: border-box !important; display: flex !important; flex-direction:column !important;
+            box-sizing: border-box !important; display: flex !important; flex-direction: column !important;
         }
-        .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 15px !important; position: relative !important; }
+        .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; fuente: 20px !important; margin-bottom: 15px !important; position: relative !important; }
         .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
-        .sugerencias-title-es { font-weight: 700 !important; font-size:1.5rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
+        .sugerencias-title-es { font-weight: 700 !important; font-size: 1.5rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
         .sugerencias-title-en { font-weight: 300 !important; font-size: 1.1rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; } 
         .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
         
@@ -25,14 +25,14 @@
         .sugerencias-seccion { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 15px !important; }
         .sugerencias-seccion-titulo { font-size: 0.9rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 10px !important; text-transform: uppercase !important; }
         
-        .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 8px !important; width: 100% !important; }
+        .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 8px !important; width: 100% !important; } 
         .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
         .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; } 
         
         /* NUEVO: Estilo para uvas inline en vinos */
         .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 6px !important; font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; font-weight: normal !important; }
 
-        .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; margin-top: 3px !important; align-items: center !important; }
+        .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 3px !important; align-items: center !important; }
         .sugerencias-alergeno-icon { display: inline-block !important; width: 18px !important; height: 18px !important; object-fit: contain !important; vertical-align: middle !important; } 
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
         .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; } 
@@ -70,39 +70,63 @@
             if (tipo === 'default') {
                 img.src = 'qr-code-RG-MOD.png';
             } else if (tipo === 'mod') {
-                img.src = 'qr-code.png';
+                src 'qr-code.png';
             }
         } else if (modo === 'usopen') {
             if (tipo === 'default') {
-                img.src = 'qr-usopen_oficial.png';
+                img.src = `qr-usopen_oficial.png`;
             } else if (tipo === 'mod') {
-                img.src = 'qr-usopen_mod.png';
+                src = `qr-usopen_mod.png`;
             }
         }
     };
 
-    function renderCartaRG() {
+    // FUNCIÓN DE RENDERIZADO MEJORADA CON POLLING
+    window.renderCartaRG = function() {
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
 
-        let fuente = [];
-        const backup = localStorage.getItem('csvData');
-        
-        if (backup) {
-            try {
-                fuente = JSON.parse(backup);
-            } catch(e) {
+        // INTENTO DE ENCUESTA (LÓGICA DE POLLING)
+        let intentos = 0;
+        const MAX_INTENTOS = 10; // Máximo 10 reintentos para encontrar datos antes de dar error
+
+        function intentarRenderizado() {
+            let fuente = [];
+            const backup = localStorage.getItem('csvData');
+            
+            if (backup) {
+                try {
+                    fuente = JSON.parse(backup);
+                } catch(e) {
+                    fuente = window.datosLocales || [];
+                }
+            } else {
                 fuente = window.datosLocales || [];
             }
-        } else {
-            fuente = window.datosLocales || [];
+
+            // VERIFICAR SI HAY DATOS EN EL RANGO 12000-12999
+            const tieneDatosEnRango = fuente.some(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
+            
+            if (tieneDatosEnRango) {
+                // DATOS ENCONTRADO -> RENDERIZAR
+                procesarYRender(fuente, contenedor);
+            } else if (intentos < MAX_INTENTOS) {
+                // DATOS VACÍOS -> REINTENTAR
+                intentos++;
+                console.log(`[Sugerencias RG] Intento ${intentos}/${MAX_INTENTOS}. Fuente actual: ${fuente.length} items.`);
+                setTimeout(intentarRenderizado, 500); // Reintentar en 500ms
+            } else {
+                // ERROR DEFINITIVO
+                contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
+            }
         }
 
-        if (!fuente || fuente.length === 0) {
-            conenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
-            return;
-        }
+        // Iniciar ciclo de intentos
+        intentarRenderizado();
+    };
 
+    function procesarYRender(fuente, contenedor) {
+        // Lógica de renderizado previamente diseñada (Optimización: Eliminar inglés, Uvas Inline)
         const platos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
         let entrantes = [], principales = [], postres = [], vinos = [];
 
@@ -139,7 +163,7 @@
 
         const renderCat = (titulo, lista, className) => {
             if (lista.length === 0) return '';
-            let h = `<div class="sugerencias-seccion ${className}"><div class="sugerencias-seccion-titulo">${titulo}</div>`;
+            let h = `<div class="sugerencias-seccion ${className}"><div class="sugerencias-headers  ... TITLE ... ... </div>`;
             lista.forEach(p => {
                 let iconsHtml = '';
                 if (p.alergenos) {
@@ -147,11 +171,13 @@
                 }
                 
                 const objEs = window.desglosarNombre(p.es);
-                const esVino = (p.id >= 13000);
+                const esVino = (p.id >= 13000); // Detección por ID es más robusta que por nombre para evitar falsos positivos
                 
-                // Lógica para Renderizado Compacto
+                // LÓGICA DE COMPACTACIÓN (Optimización):
+                // 1. Vinos: Solo Español, Uvas Inline. Sin Inglés.
+                // 2. No-Vinos: Español e Inglés.
                 let htmlNombreEs = "";
-                let htmlNombreEn = "";
+                let htmlNombreEn = ""; 
 
                 if (esVino) {
                     // EXCEPCIÓN VINO: Solo Español, Uvas Inline
@@ -224,6 +250,8 @@
         pWin.document.close();
     };
 
+    // MODIFICADO: Usar la función de renderizado con polling en lugar del timeout simple
     window.renderCartaRG = renderCartaRG;
-    setTimeout(renderCartaRG, 600);
+    setTimeout(renderCartaRG, 1500); // Aumentado timeout para dar tiempo a `app.js` y evitar "Esperando datos"
+})();
 })();
