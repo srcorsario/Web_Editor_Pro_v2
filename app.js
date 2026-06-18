@@ -1,16 +1,17 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.39-CLIENT-SIDE-OPTIMISTIC-LOCK'; 
+window.APP_VERSIONS.app = '1.0.40-LOCALSTORAGE-PERSISTENCE'; 
 
-console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
+console.group("%c[Editor] Inicializando sistema de control...", "color: orange; fontitorio; font-weight: bold;");
 
 // NUEVO: Flag global para controlar cambios sin guardar
 window.hayCambiosSinGuardar = false;
 
 // NUEVO: Timestamp y datos de la última edición para parchear inconsistencias del CDN
-window.lastSaveAttempt = 0;
-window.lastSavedSnapshot = []; // Copia profunda de lo que el usuario acaba de guardar
+// Usamos localStorage para mantener este estado aunque el usuario recargue la página (F5)
+const STORAGE_KEY_TS = 'editor_last_save_ts';
+const STORAGE_KEY_SNAPSHOT = 'editor_last_snapshot';
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -34,7 +35,7 @@ const CROQUETAS_CONFIG = {
 
 function getWebAppUrlSafe() {
     if (typeof window.WEB_APP_URL !== 'undefined') return window.WEB_APP_URL;
-    if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl();
+    if (typeof window.getWebAppUrl === 'function') return window.getWebApp_URL();
     return '';
 }
 
@@ -98,15 +99,20 @@ function extraerJSON(texto) {
 }
 
 async function cargar(retryCount = 0) {
-    const CONSISTENCY_WINDOW_MS = 30000; // Ventana de 30s para aplicar parche optimista
-    const MAX_RETRIES = 5; // Aumentado de 3 a 5 para maximizar probabilidad de acierto
+    // NUEVO: Lectura de estado de guardado desde localStorage
+    const savedTs = parseInt(localStorage.getItem(STORAGE_KEY_TS) || '0';
+    const savedSnapshot = JSON.parse(localStorage.getItem(STORAGE_KEY_SNAPSHOT) || '[]');
     
-    const timeSinceSave = Date.now() - window.lastSaveAttempt;
+    // Definimos la ventana de consistencia post-guardado (ahora 45s)
+    const CONSISTENCY_WINDOW_MS = 45000; 
+    const MAX_RETRIES = 5;
+    
+    const timeSinceSave = Date.now() - savedTs;
     const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
 
     console.log("[Editor] Cargando datos..." + (retryCount > 0 ? `(Reintento ${retryCount}/${MAX_RETRIES})` : ""));
     try {
-        const url = getCsvUrlSafe();
+        const url = getCsvUrlUrlSafe();
         if (!url) return;
         
         console.log("[Editor] URL Objetivo: " + url.substring(0, 50) + "...");
@@ -122,9 +128,9 @@ async function cargar(retryCount = 0) {
         });
         const text = await resp.text();
         
-        // NUEVO: Lógica "Client-Side Optimistic Lock"
-        // Si estamos en zona de consistencia post-guardado y tenemos una snapshot local:
-        if (isConsistencyZone && retryCount === 0 && window.lastSavedSnapshot.length > 0) {
+        // NUEVO: Lógica de Recuperación de Estado (Persistente)
+        // Si estamos en ventana de consistencia (menos de 45s desde guardado) y tenemos una snapshot local:
+        if (isConsistencyZone && retryCount === 0 && savedSnapshot.length > 0) {
             // Intento 1: Parsear CSV recibido
             let tempData = [];
             const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
@@ -157,7 +163,9 @@ async function cargar(retryCount = 0) {
 
             // Comprobar datos recibidos contra la snapshot (lo que el usuario acaba de editar)
             let parchesAplicados = 0;
-            window.lastSavedSnapshot.forEach(savedItem => {
+            let patchConfirmado = false;
+
+            savedSnapshot.forEach(savedItem => {
                 const loadedItem = tempData.find(i => i.id === savedItem.id);
                 // Si el item cargado es diferente al item guardado, el servidor dio datos viejos.
                 // Asumimos que el usuario tiene la razón.
@@ -173,14 +181,17 @@ async function cargar(retryCount = 0) {
                 }
             });
 
-            if (parchesAplicados > 0 && typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log(`[Alerta] Google CDN aún desactualizado. Se han restaurado ${parchesAplicados} ediciones locales para corregir la visualización.`);
+            if (parchesAplicados > 0) {
+                if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+                    UI.log(`[Alerta] Google CDN aún desactualizado. Se han restaurado ${parchesAplicados} ediciones locales (v1.0) en `datosLocales` para corregir la visualización.`);
+                }
+                patchConfirmado = true;
             }
         }
 
         // NUEVO: Lógica "Brute Force" para CDN (si el parche no fue suficiente o no aplica)
-        if (isConsistencyZone && retryCount < MAX_RETRIES) {
-            console.warn(`[Editor] Zona de Peligro (Caché Google). Reintento automático #${retryCount + 1}...`);
+        if (!patchConfirmado && isConsistencyZone && retryCount < MAX_RETRIES) {
+            console.warn(`[Editor] Zona de Peligro. Reintento automático #${retryCount + 1}...`);
             if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
                 UI.log(`[Info] Verificando consistencia de datos (Intento ${retryCount + 1}/${MAX_RETRIES})...`);
             }
@@ -425,36 +436,7 @@ function abrirEditor(id, esNuevo = false) {
         }
     }
     
-    comprobarRequisitosTraduccion();
-    const modalEditor = document.getElementById('modal-editor');
-    if (modalEditor) modalEditor.style.display = 'block';
-}
-
-function actualizarNombreCroquetas() {
-    const esCroquetaVeg = (platoEditandoId >= 12200 && platoEditandoId <= 12299);
-    const seleccionadas = Array.from(document.querySelectorAll('.croqueta-btn.selected')).map(el => el.innerText.trim());
-    
-    if (seleccionadas.length === 0) {
-        const editEs = document.getElementById('edit-es');
-        if (editEs) editEs.value = "";
-        comprobarRequisitosTraduccion();
-        return;
-    }
-
-    const soloVegetarianas = seleccionadas.every(s => CROQUETAS_CONFIG.vegetariana.includes(s));
-    const cantidad = (soloVegetarianas || esCroquetaVeg) ? 6 : 2;
-
-    const textoCroquetas = seleccionadas.map(s => `${cantidad} ${s}`).join(' - ');
-    
-    let titulo = esCroquetaVeg ? "Croquetas Vegetarianas:" : "Surtido de Croquetas:";
-    if (!esCroquetaVeg && soloVegetarianas) titulo = "Croquetas Vegetarianas:";
-
-    const editEs = document.getElementById('edit-es');
-    if (editEs) editEs.value = `${titulo} ${textoCroquetas}`;
-    comprobarRequisitosTraduccion();
-}
-
-function comprobarRequisitosTraduccion() {
+    comprobarRequisitosTraduccion() {
     const editEs = document.getElementById('edit-es');
     const editEn = document.getElementById('edit-en');
     const btnAuto = document.getElementById('btn-autotraducir');
@@ -498,7 +480,7 @@ async function generarTraduccionEN() {
     Necesito que me des EXACTAMENTE 3 opciones de traducción al inglés con diferentes enfoques para un menú:
     1. Traducción directa/literal.
     2. Traducción gastronómica/descriptiva (más elegante).
-    3. Traducción corta/concisa (estilo menú rápido).
+    3. Traducción corta/concisa (estilo menúrico).
     
     Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\").
     Estructura exacta: {"directa": "...", "gastronomica": "...", "corta": "..."}`;
@@ -658,7 +640,7 @@ async function ejecutarTraduccionAutomatica() {
     const instruccion = `Actúa como un traductor experto de menús de restaurantes. Traduce el siguiente elemento basándote en su texto en Español: "${textoCompletoEs}" ${textoCompletoEn ? `y su texto en Inglés (como referencia): "${textoCompletoEn}"` : ''}.
     ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado para todos los idiomas. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original en todos los idiomas (ej: EL COTO (D.O. Rioja)).' : ''}
     
-    Traduce a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
+    Traduce a los siguientes idiomas (usa los cificaciones de configuración): ${idiomasObjetivo.join(', ')}.
     
     Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\").
     Usa los códigos ISO como claves.
@@ -674,7 +656,7 @@ async function ejecutarTraduccionAutomatica() {
             const response = await fetch(`${URL_MODELO}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }] })
+                body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }) })
             });
             
             const data = await response.json();
@@ -728,7 +710,7 @@ async function ejecutarTraduccionAutomatica() {
 
 function aplicarCambiosPlato() {
     let p = esNuevoPlato ? datosTempNuevo : datosLocales.find(x => x.id === platoEditandoId);
-    if (!p) return;
+    if (!p) return; 
     
     if (esNuevoPlato) {
         datosLocales.push(p);
@@ -827,7 +809,6 @@ function prepararNuevoPlato(baseId, folder) {
     datosTempNuevo['es'] = "NUEVO ELEMENTO";
 
     // Nota: Al aceptar cambios se marcará como dirty. Al crear solo se prepara, no se guarda hasta aceptar.
-    // Pero si añadimos el array, técnicamente es un cambio en memoria.
     // Dejaremos que `aplicarCambiosPlato` maneje el flag al final.
 
     cerrarModal('modal-selector');
@@ -842,14 +823,17 @@ async function enviarAlExcel() {
     btn.innerText = "⏳ ENVIANDO..."; 
     btn.disabled = true;
     
-    // NUEVO: Actualizar texto del botón, resetear flag y marcar tiempo de guardado + Snapshot
+    // NUEVO: Actualizar texto del botón, resetear flag, marcar tiempo y Snapshot en Storage
     console.log("[Editor] Guardando cambios...");
     window.lastSaveAttempt = Date.now();
     
     datosLocales.sort((a, b) => a.id - b.id);
     
-    // NUEVO: Guardar snapshot local de los datos actuales para parchear inconsistencias del CDN
+    // Guardar Snapshot profundo para parchear inconsistencias si el servidor devuelve datos viejos tras refrescar
+    // Clonar profundo para evitar referencias perdidas
     window.lastSavedSnapshot = JSON.parse(JSON.stringify(datosLocales));
+    localStorage.setItem(STORAGE_KEY_TS, window.lastSaveAttempt);
+    localStorage.setItem(STORAGE_KEY_SNAPSHOT, window.lastSavedSnapshot);
     
     const payload = datosLocales.map(p => {
         let obj = {
