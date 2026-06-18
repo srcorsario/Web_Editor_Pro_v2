@@ -1,14 +1,14 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.37-CDN-RETRY-LOGIC'; 
+window.APP_VERSIONS.app = '1.0.38-BRUTE-FORCE-RETRY'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
 // NUEVO: Flag global para controlar cambios sin guardar
 window.hayCambiosSinGuardar = false;
 
-// NUEVO: Marca de tiempo del último intento de guardado para validar lecturas posteriores
+// NUEVO: Marca de tiempo del último intento de guardado
 window.lastSaveAttempt = 0;
 
 let datosLocales = [];
@@ -97,8 +97,12 @@ function extraerJSON(texto) {
 }
 
 async function cargar(retryCount = 0) {
-    const MAX_RETRIES = 3;
+    const DANGER_WINDOW_MS = 15000; // Ventana de 15s post-guardado para aplicar reintentos agresivos
+    const MAX_RETRIES = 5; // Aumentado de 3 a 5 para maximizar probabilidad de acierto
     
+    const timeSinceSave = Date.now() - window.lastSaveAttempt;
+    const isDangerZone = timeSinceSave < DANGER_WINDOW_MS;
+
     console.log("[Editor] Cargando datos..." + (retryCount > 0 ? `(Reintento ${retryCount}/${MAX_RETRIES})` : ""));
     try {
         const url = getCsvUrlSafe();
@@ -110,35 +114,26 @@ async function cargar(retryCount = 0) {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
-        // MODIFICADO: Se usa parámetro 'zx' y cabeceras forzadas
+        // MODIFICADO: Parámetro 'zx' y cabeceras forzadas
         const resp = await fetch(url + '&zx=' + Date.now(), { 
             cache: "no-store",
             headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
         });
         const text = await resp.text();
         
-        // NUEVO: Verificación de estancamiento de CDN
-        // Si guardamos recientemente (menos de 60s) y el archivo del servidor es más viejo que nuestro guardado, es caché sucia.
-        const lastModifiedHeader = resp.headers.get('Last-Modified');
-        const isStale = window.lastSaveAttempt > 0 && lastModifiedHeader && (new Date(lastModifiedHeader).getTime() < window.lastSaveAttempt);
-        
-        if (isStale && retryCount < MAX_RETRIES) {
-            console.warn(`[Editor] ⚠️ CDN Stale Detectado: El servidor indica archivo modificado el ${lastModifiedHeader}, pero guardamos a las ${new Date(window.lastSaveAttempt).toLocaleTimeString()}. Reintentando...`);
+        // NUEVO: Lógica "Brute Force" para CDN
+        // Si estamos en zona de peligro (guardado reciente) y aún no hemos superado los intentos máximos,
+        // reintentamos aunque parezca correcto, para evitar el "Torn Read" (cabecera nueva, cuerpo viejo).
+        if (isDangerZone && retryCount < MAX_RETRIES) {
+            console.warn(`[Editor] Zona de Peligro (Caché Google). Reintento automático #${retryCount + 1} para asegurar consistencia...`);
             if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log(`[Warning] El servidor devolvió datos antiguos (Caché Google). Forzando reintento ${retryCount + 1}...`);
+                UI.log(`[Info] Verificando datos post-guardado (Intento ${retryCount + 1}/${MAX_RETRIES})...`);
             }
-            // Esperar 500ms y reintentar para dar chance a que el balanceador cambie de nodo
-            await new Promise(r => setTimeout(r, 500));
+            // Esperar 300ms para cambiar de conexión/IP/ nodo CDN
+            await new Promise(r => setTimeout(r, 300));
             return cargar(retryCount + 1);
         }
         
-        if (isStale && retryCount >= MAX_RETRIES) {
-            console.error("[Editor] ❌ Máximos reintentos alcanzados para obtener datos frescos. Google CDN sigue desactualizado.");
-            if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log('[Error] Google tarda mucho en propagar. Se mostrarán datos posiblemente antiguos tras varios intentos.');
-            }
-        }
-
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
         
@@ -792,7 +787,7 @@ async function enviarAlExcel() {
     btn.innerText = "⏳ ENVIANDO..."; 
     btn.disabled = true;
     
-    // NUEVO: Actualizar texto del botón, resetear flag y marcar tiempo de guardado para validación
+    // NUEVO: Actualizar texto del botón, resetear flag y marcar tiempo de guardado
     console.log("[Editor] Guardando cambios...");
     window.lastSaveAttempt = Date.now();
     
