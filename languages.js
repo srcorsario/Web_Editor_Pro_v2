@@ -1,22 +1,19 @@
 // languages.js
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.lang = '1.0.2'; // Incrementado por modularización de idiomas
+window.APP_VERSIONS.lang = '1.0.2'; 
 
-// MODIFICADO: Cambiado de const a var para garantizar que se adjunte al objeto global window y sea accesible desde ui.js (módulo ES6)
 var IDIOMAS_CONFIG = {
     ES: "🇪🇸 Español", EN: "🇬🇧 English", DE: "🇩🇪 Deutsch", FR: "🇫🇷 Français", IT: "🇮🇹 Italiano",
     RU: "🇷🇺 Русский", NL: "🇳🇱 Nederlands", PL: "🇵🇱 Polski", SV: "🇸🇪 Svenska", NO: "🇳🇴 Norsk",
     DA: "🇩🇰 Dansk", FI: "🇫🇮 Suomi", PT: "🇵🇹 Português", RO: "🇷🇴 Română", HU: "🇭🇺 Magyar",
     CS: "🇨🇿 Čeština", EL: "🇬🇷 Ελληνικά", TR: "🇹🇷 Türkçe", AR: "🇦🇪 العربية", ZH: "🇨🇳 中文", JA: "🇯🇵 日本語",
     CA: "català", EU: "Euskara", GL: "Galego", VA: "Valencià",
-    KO: "🇰🇷 한국어" // <-- MODIFICACIÓN QUIRÚRGICA: Añadido soporte para Coreano
+    KO: "🇰🇷 한국어"
 };
 
-// NUEVO: Movido desde app.js para centralizar el orden de los idiomas y facilitar añadir nuevos sin tocar app.js
 var IDIOMAS_ORDEN = ['es', 'en', 'de', 'fr', 'it', 'ru', 'nl', 'pl', 'sv', 'no', 'da', 'fi', 'pt', 'ro', 'hu', 'cs', 'el', 'tr', 'ar', 'zh', 'ja', 'ca', 'eu', 'gl', 'va', 'ko'];
 
-// NUEVO: Mapeo estricto de índices del CSV de Google Sheets. Para añadir un idioma en el futuro, solo hay que añadirlo aquí.
 var IDIOMAS_CSV_INDICES = { 
     es: 3, en: 7, de: 8, fr: 9, it: 10, 
     ru: 11, nl: 12, pl: 13, sv: 14, no: 15, 
@@ -29,7 +26,7 @@ var IDIOMAS_CSV_INDICES = {
 var categoriesList = [ 
     { id: '12', ES: 'Sugerencias', EN: 'Suggestions', DE: 'Vorschläge', FR: 'Suggestions', IT: 'Suggerimenti', RU: 'Предложения', NL: 'Suggesties', PL: 'Sugestie', SV: 'Förslag', NO: 'Forslag', DA: 'Forslag', FI: 'Suositukset', PT: 'Sugstões', RO: 'Sugestii', HU: 'Ajánlatok', CS: 'Doporučení', EL: 'Προτάσεις', TR: 'Öneriler', AR: 'اقتrahat', ZH: '推荐', JA: 'おすすめ', CA: 'Suggeriments', EU: 'Iradokizunak', GL: 'Suxestións', VA: 'Suggeriments' }, 
     { id: '1', ES: 'Entrantes', EN: 'Starters', DE: 'Vorspeisen', FR: 'Entrées', IT: 'Antipasti', RU: 'Закуски', NL: 'Voorgerechten', PL: 'Przystawki', SV: 'Förrätter', NO: 'Forretter', DA: 'Forretter', FI: 'Alkuruoat', PT: 'Entradas', RO: 'Gustări', HU: 'Előételek', CS: 'Předkrmy', EL: 'Ορεκτικά', TR: 'Başlangıçlar', AR: 'مقبلات', ZH: '前菜', JA: '前菜', CA: 'Entrants', EU: 'Hasierakoak', GL: 'Entrantes', VA: 'Entrants' }, 
-    { id: '2', ES: 'Ensaladas', EN: 'Salads', DE: 'Salate', FR: 'Salades', IT: 'Insalate', RU: 'Салаты', NL: 'Salades', PL: 'Sałatky', SV: 'Sallader', NO: 'Salater', DA: 'Salater', FI: 'Salaatit', PT: 'Saladas', RO: 'Salate', HU: 'Saláták', CS: 'Saláty', EL: 'Σαλάτες', TR: 'Salatalar', AR: 'سلطات', ZH: '沙拉', JA: 'サラダ', CA: 'Amanides', EU: 'Entsaladak', GL: 'Ensaladas', VA: 'Amanides' }, 
+    { id: '2', ES: 'Ensaladas', EN: 'Salads', DE: 'Salate', FR: 'Salades', IT: 'Insalate', RU: 'Салаты', NL: 'Salades', PL: 'Sałatki', SV: 'Sallader', NO: 'Salater', DA: 'Salater', FI: 'Salaatit', PT: 'Saladas', RO: 'Salate', HU: 'Saláták', CS: 'Saláty', EL: 'Σαλάτες', TR: 'Salatalar', AR: 'سلطات', ZH: '沙拉', JA: 'サラダ', CA: 'Amanides', EU: 'Entsaladak', GL: 'Ensaladas', VA: 'Amanides' }, 
     { id: '3', ES: 'Arroces & Pastas', EN: 'Rice & Pasta', DE: 'Reis & Pasta', FR: 'Riz & Pâtes', IT: 'Riso e Pasta', RU: 'Рис и паста', NL: 'Rijst & Pasta', PL: 'Ryż i Makaron', SV: 'Ris & Pasta', NO: 'Ris og pasta', DA: 'Ris & Pasta', FI: 'Riisi & Pasta', PT: 'Arroz e Massa', RO: 'Orez și paste', HU: 'Rizs és tészták', CS: 'Rýže a těstoviny', EL: 'Ρύζι & Ζυμαρικά', TR: 'Pilav & Makarna', AR: 'أرز وباستا', ZH: '米饭与面食', JA: 'ライス＆パスタ', CA: 'Arrossos i Pastes', EU: 'Arrozak eta Pastak', GL: 'Arroces e Pastas', VA: 'Arrossos i Pastes' }, 
     { id: '4', ES: 'Recetas', EN: 'Recipes', DE: 'Rezepte', FR: 'Recettes', IT: 'Ricette', RU: 'Рецепты', NL: 'Recepten', PL: 'Przepisy', SV: 'Recept', NO: 'Oppskrifter', DA: 'Opskrifter', FI: 'Reseptit', PT: 'Receitas', RO: 'Rețete', HU: 'Receptek', CS: 'Recepty', EL: 'Συνταγές', TR: 'Tarifler', AR: 'وصفات', ZH: '特色菜', JA: 'レシピ', CA: 'Receptes', EU: 'Errezetak', GL: 'Receitas', VA: 'Receptes' }, 
     { id: '5', ES: 'Principales', EN: 'Mains', DE: 'Hauptspeisen', FR: 'Plats', IT: 'Piatti', RU: 'Основные блюда', NL: 'Hoofdgerechten', PL: 'Dania główne', SV: 'Huvudrätter', NO: 'Hovedretter', DA: 'Hovedretter', FI: 'Pääruoat', PT: 'Pratos principais', RO: 'Feluri principale', HU: 'Főételek', CS: 'Hlavní jídla', EL: 'Κυρίως Πιάτα', TR: 'Ana Yemekler', AR: 'أطباق رئيسية', ZH: '主菜', JA: 'メインディッシュ', CA: 'Principals', EU: 'Plater Nagusiak', GL: 'Pratos Principais', VA: 'Principals' }, 
