@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.11-CACHE-BUST-V2'; 
+window.APP_VERSIONS.ui = '1.0.12-CDN-RETRY-LOGIC'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -158,13 +158,13 @@ export const UI = {
     },
 
     // MODIFICADO: Ahora acepta una URL explícita para evitar confusión con múltiples inputs
-    cargarGoogleSheets: async (targetUrl) => {
+    cargarGoogleSheets: async (targetUrl, retryCount = 0) => {
+        const MAX_RETRIES = 3;
         if (!targetUrl) return UI.log("[Error] No se proporcionó una URL válida.");
         
         UI.log(`[Info] Descargando CSV desde Google Sheets (${targetUrl.substring(0, 40)}...)...`);
         try {
-            // MODIFICADO: Se usa parámetro 'zx' (estándar de Google para bypass) y cabeceras forzadas
-            // Esto evita que el balanceador de carga de Google retenga versiones antiguas del CSV en endpoints /pub
+            // MODIFICADO: Se usa parámetro 'zx' y cabeceras forzadas
             const resp = await fetch(targetUrl + '&zx=' + Date.now(), { 
                 cache: "no-store",
                 headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
@@ -172,6 +172,17 @@ export const UI = {
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
             
+            // NUEVO: Verificación de estancamiento de CDN
+            const lastModifiedHeader = resp.headers.get('Last-Modified');
+            const isStale = window.lastSaveAttempt > 0 && lastModifiedHeader && (new Date(lastModifiedHeader).getTime() < window.lastSaveAttempt);
+            
+            if (isStale && retryCount < MAX_RETRIES) {
+                console.warn(`[UI] ⚠️ CDN Stale Detectado. Reintentando...`);
+                UI.log(`[Warning] Datos antiguos detectados en Pro Panel. Reintentando (${retryCount + 1}/${MAX_RETRIES})...`);
+                await new Promise(r => setTimeout(r, 500));
+                return UI.cargarGoogleSheets(targetUrl, retryCount + 1);
+            }
+
             if (window.Papa) {
                 window.Papa.parse(text, {
                     skipEmptyLines: true,
