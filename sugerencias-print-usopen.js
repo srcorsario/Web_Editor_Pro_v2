@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.5.0-USOPEN-Wine-Only-Opt";
+    const VERSION = "v2.6.0-USOPEN-WineOnlyOpt";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -53,7 +53,6 @@
     `;
     document.head.appendChild(stylePrintUsOpen);
 
-    // ASEGURAMOS LA FUNCIÓN GLOBAL
     if (!window.desglosarNombre) {
         window.desglosarNombre = function(texto) { 
             if (!texto) return { nombre: "", uvas: "" };
@@ -65,34 +64,58 @@
         };
     }
 
-    function renderCartaUSOPEN() {
+    // FUNCIÓN DE RENDERIZADO MEJORADA CON POLLING (USOPEN)
+    window.renderCartaUSOPEN = function() {
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
 
-        let fuente = [];
-        const backup = localStorage.getItem('csvData');
-        if (backup) {
-            try {
-                fuente = JSON.parse(backup);
-            } catch(e) {
+        // INTENTO DE ENCUESTA (LÓGICA DE POLLING)
+        let intentos = 0;
+        const MAX_INTENTOS = 10;
+
+        function intentarRenderizado() {
+            let fuente = [];
+            const backup = localStorage.getItem('csvData');
+            if (backup) {
+                try {
+                    fuente = JSON.parse(backup);
+                } catch(e) {
+                    fuente = window.datosLocales || [];
+                }
+            } else {
                 fuente = window.datosLocales || [];
             }
-        } else {
-            fuente = window.datosLocales || [];
+
+            // VERIFICAR SI HAY DATOS EN EL RANGO DE SUGERENCIAS
+            const tieneDatosEnSugerencias = fuente.some(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
+            
+            if (tieneDatosSugerencias) {
+                // DATOS ENCONTRADO -> RENDERIZAR
+                procesarYRender(fuente, contenedor);
+            } else if (intentos < MAX_INTENTOS) {
+                // DATOS VACÍOS -> REINTENTAR
+                intentos++;
+                console.log(`[Sugerencias USOPEN] Intento ${intentos}/${MAX_INTENTOS}. Fuente actual: ${fuente.length} items.`);
+                setTimeout(intentarRenderizado, 500);
+            } else {
+                // ERROR DEFINITIVO
+                contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
+            }
         }
 
-        if (!fuente || fuente.length === 0) {
-            contenedor.innerHTML = `<div class="p-4 text-center text-slate-500 italic">Esperando origen de datos válido de la carta estándar (vuelve a la Pestaña 1 un segundo para activar la memoria)...</div>`;
-            return;
-        }
+        // Iniciar ciclo de intentos
+        intentarRenderizado();
+    };
 
+    function procesarYRender(fuente, contenedor) {
+        // Lógica de renderizado previamente diseñada (Optimización: Eliminar inglés en Vinos, Uvas Inline)
         const platos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
         let entrantes = [], principales = [], postres = [], vinos = [];
 
         platos.forEach(p => {
             const id = parseInt(p.id, 10);
             const desgloseEs = window.desglosarNombre(p.es);
-            const nombreEsBajo = desgloseEs.nombre ? desgloseEs.nombre.toLowerCase() : "";
+            const nombreEsBajo = (desgloseEs && desgloseEs.nombre) ? desgloseEs.nombre.toLowerCase() : "";
             
             if (id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta'))) {
                 vinos.push(p);
@@ -115,7 +138,7 @@
                     <div class="sugerencias-title-es">SUGERENCIAS DEL CHEF</div>
                     <div class="sugerencias-title-en">CHEF'S SUGGESTIONS</div>
                 </div>
-                <img src="USOPEN_REST.png" class="sugerencias-logo-img" onerror="this.src='https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';">
+                <img src="USOPEN_REST.png" class="sugerencias-logo-img" onerror="this.src='https://z-ccdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d';">
             </div>
             <div class="sugerencias-body">
         `;
@@ -130,9 +153,11 @@
                 }
                 
                 const objEs = window.desglosarNombre(p.es);
-                // Detectar si es vino por ID o por nombre (RG usa IDs >= 13000, USOpen usa lógica de texto "vino"). Aplicamos la misma lógica "quitar inglés solo en vino".
-                const esVino = (id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta')));
-                
+                const esVino = (p.id >= 13000); // Detección por ID es más robusta
+
+                // LÓGICA DE COMPACTACIÓN (Optimización):
+                // 1. Vinos: Solo Español, Uvas Inline. Sin Inglés.
+                // 2. No-Vinos: Español e Inglés en líneas separadas.
                 let htmlNombreEs = "";
                 let htmlNombreEn = "";
 
@@ -141,7 +166,7 @@
                     if (objEs.uvas) {
                         htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre} <span class="sugerencias-detalles-uvas-inline">(${objEs.uvas})</span></span>`;
                     } else {
-                        htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
+                        htmlNombreEs = `<span class="sugerencias-nc-ombre-es">${objEs.nombre}</span>`;
                     }
                 } else {
                     // ESTÁNDAR: Español e Inglés en líneas separadas
@@ -162,6 +187,7 @@
                             ${iconsHtml}
                         </div>
                         <div class="sugerencias-puntos"></div>
+                        <div class="sugerencias-requests.
                         <div class="sugerencias-precio">${precioFormateado}</div>
                     </div>
                 `;
@@ -182,7 +208,7 @@
                     If you have any food allergies, please inform our staff.
                 </div>
                 <div class="sugerencias-qr-container">
-                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none;">
+                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5000; user-select:none;">
                         Tipo de QR:
                         <label style="cursor: pointer; margin-right: 10px; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-usopen-footer" value="default" checked onchange="window.toggleQR('default', 'usopen')"> Oficial
@@ -191,7 +217,7 @@
                             <input type="radio" name="qr-mode-usopen-footer" value="mod" onchange="window.toggleQR('mod', 'usopen')"> Alternativo
                         </label>
                     </div>
-                    <img src="qr-usopen_oficial.png" class="sugerencias-qr-img" id="img-qr-usopen">
+                    <img src="qr-usopen_oficial.png" class="sugerencias-argo-img" id="img-qr-usopen">
                 </div>
             </div>
         `;
@@ -200,13 +226,14 @@
     }
 
     window.imprimirSugerenciasUSOPEN = function() {
-        const cont = document.getElementById('sugerencias-contenido-usopen');
-        if (!cont) return;
+        const contenedor = document.getElementById('sugerencias-contenido-usopen');
+        if (!contenedor) return;
         const pWin = window.open('', '_blank', 'width=800,height=1000');
-        pWin.document.write(`<html><head><title>Sugerencias USOPEN</title><style>${stylePrintUsOpen.innerHTML}</style></head><body><div class="sugerencias-panel">${cont.innerHTML}</div><script>setTimeout(() => { window.print(); window.close(); }, 500);<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias USOPEN</title><style>${stylePrintUsOpen.innerHTML}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>setTimeout(() => { window.print(); window.close(); }, 500);<\/script></body></html>`);
         pWin.document.close();
     };
 
+    // MODIFICADO: Usar la función de renderizado con polling en lugar del timeout simple
     window.renderCartaUSOPEN = renderCartaUSOPEN;
-    setTimeout(renderCartaUSOPEN, 600);
+    setTimeout(renderCartaUSOPEN, 1500); 
 })();
