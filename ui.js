@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.10'; // MODIFICADO: Modal de selección de destino
+window.APP_VERSIONS.ui = '1.0.11-CACHE-BUST-V2'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -163,8 +163,12 @@ export const UI = {
         
         UI.log(`[Info] Descargando CSV desde Google Sheets (${targetUrl.substring(0, 40)}...)...`);
         try {
-            // MODIFICADO: Añadida opción { cache: "no-store" } para forzar petición fresca y evitar cachés HTTP agresivas
-            const resp = await fetch(targetUrl + '&t=' + Date.now(), { cache: "no-store" });
+            // MODIFICADO: Se usa parámetro 'zx' (estándar de Google para bypass) y cabeceras forzadas
+            // Esto evita que el balanceador de carga de Google retenga versiones antiguas del CSV en endpoints /pub
+            const resp = await fetch(targetUrl + '&zx=' + Date.now(), { 
+                cache: "no-store",
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
+            });
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
             
