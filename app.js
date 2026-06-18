@@ -1,72 +1,15 @@
-// =========================================================================
-// REPOSITORIO: FRONTEND ADMINISTRADOR CARTA
-// ARCHIVO: app.js (VERSIÓN COMPLETAMENTE UNIFICADA Y ALINEADA CON EL BACKEND)
-// =========================================================================
-
+// --- app.js ---
+// NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '13.0.1'; 
+window.APP_VERSIONS.app = '1.0.32'; 
 
-window.currentMode = window.currentMode || 'RG'; 
-window.datosLocales = window.datosLocales || [];
-
+let datosLocales = [];
 let platoEditandoId = null;
 let esNuevoPlato = false; 
 let datosTempNuevo = null; 
 let opcionesENActuales = [];
 
-// 📊 ÍNDICES EXACTOS SEGÚN TU GOOGLE APPS SCRIPT (Base 0 para JavaScript)
-window.IDIOM_CSV_INDICES = {
-    'es': 3,   // Columna D (4) - ES
-    'en': 7,   // Columna H (8) - EN
-    'de': 8,   // Columna I (9) - DE
-    'fr': 9,   // Columna J (10) - FR
-    'it': 10,  // Columna K (11) - IT
-    'ru': 11,  // Columna L (12) - RU
-    'nl': 12,  // Columna M (13) - NL
-    'pl': 13,  // Columna N (14) - PL
-    'sv': 14,  // Columna O (15) - SV
-    'no': 15,  // Columna P (16) - NO
-    'da': 16,  // Columna Q (17) - DA
-    'fi': 17,  // Columna R (18) - FI
-    'pt': 18,  // Columna S (19) - PT
-    'ro': 19,  // Columna T (20) - RO
-    'hu': 20,  // Columna U (21) - HU
-    'cs': 21,  // Columna V (22) - CS
-    'el': 22,  // Columna W (23) - EL
-    'tr': 23,  // Columna X (24) - TR
-    'ar': 24,  // Columna Y (25) - AR
-    'zh': 25,  // Columna Z (26) - ZH
-    'ja': 26,  // Columna AA (27) - JA
-    'ca': 27,  // Columna AB (28) - CA
-    'eu': 28,  // Columna AC (29) - EU
-    'gl': 29,  // Columna AD (30) - GL
-    'va': 30,  // Columna AE (31) - VA
-    'ko': 31   // Columna AF (32) - KO (Coreano)
-};
-
-// Generamos el array de ordenación automáticamente usando las claves del mapa de arriba
-window.IDIOMAS_ORDEN = Object.keys(window.IDIOM_CSV_INDICES);
-
-// Configuración visual de nombres completos para la UI del editor
-window.IDIOMAS_CONFIG = {
-    'ES': 'Español', 'EN': 'Inglés', 'DE': 'Alemán', 'FR': 'Francés', 'IT': 'Italiano',
-    'RU': 'Ruso', 'NL': 'Neerlandés', 'PL': 'Polaco', 'SV': 'Sueco', 'NO': 'Noruego',
-    'DA': 'Danés', 'FI': 'Finlandés', 'PT': 'Portugués', 'RO': 'Rumano', 'HU': 'Húngaro',
-    'CS': 'Checo', 'EL': 'Griego', 'TR': 'Turco', 'AR': 'Árabe', 'ZH': 'Chino',
-    'JA': 'Japonés', 'CA': 'Catalán', 'EU': 'Euskera', 'GL': 'Gallego', 'VA': 'Valenciano',
-    'KO': 'Coreano'
-};
-
-// Estructura por defecto de categorías si no se hereda de config.js
-if (typeof window.ESTRUCTURA === 'undefined') {
-    window.ESTRUCTURA = [
-        { id: 10000, rango: 999, name: "Entrantes", folder: "entrantes" },
-        { id: 11000, rango: 999, name: "Principales", folder: "principales" },
-        { id: 12100, rango: 199, name: "Croquetas", folder: "croquetas" },
-        { id: 13000, rango: 999, name: "Bodega", folder: "bodega" }
-    ];
-}
-
+// Lista de Alérgenos con Emojis Restaurados
 const ALERGENOS_LISTA = [
     "🌾 GLUTEN", "🫘 SESAMO", "🥜 CACAHUETE", "🌱 SOJA", "🌰 FRUTOSCASCARA", 
     "🥬 APIO", "🥚 HUEVO", "🐟 PESCADO", "🟡 MOSTAZA", "🐚 MOLUSCO", 
@@ -80,7 +23,18 @@ const CROQUETAS_CONFIG = {
     vegetariana: ["Setas", "Coliflor con curry"]
 };
 
-// --- UTILS ---
+// NUEVO: Puente de seguridad para acceder a la configuración global si el módulo config.js no exporta a window directamente
+// Esto es necesario porque app.js se carga como script estándar, no módulo.
+function getWebAppUrlSafe() {
+    if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl();
+    return (typeof window.WEB_APP_URL !== 'undefined') ? window.WEB_APP_URL : '';
+}
+
+function getCsvUrlSafe() {
+    if (typeof window.getCsvUrl === 'function') return window.getCsvUrl();
+    return (typeof window.CSV_URL !== 'undefined') ? window.CSV_URL : '';
+}
+
 function superLimpiar(texto) {
     if (!texto) return "";
     let t = texto.toString().trim();
@@ -133,32 +87,20 @@ function extraerJSON(texto) {
     throw new Error("No se encontró un JSON válido en la respuesta de la IA.");
 }
 
-// --- FUNCIÓN CARGAR (ALINEADA AL BACKEND 32 COLUMNAS) ---
 async function cargar() {
     try {
+        const url = getCsvUrlSafe();
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
-        if (typeof getCsvUrl !== 'function') {
-            console.error("La función getCsvUrl() no está definida.");
-            const statusCarga = document.getElementById('status-carga');
-            if (statusCarga) statusCarga.innerText = "❌ Error: getCsvUrl no configurado";
-            return;
-        }
-
-        const resp = await fetch(getCsvUrl() + '&t=' + Date.now());
+        const resp = await fetch(url + '&t=' + Date.now());
         const text = await resp.text();
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
+        datosLocales = [];
         
-        window.datosLocales = []; 
-        
-        const indicesIdiomas = window.IDIOM_CSV_INDICES;
-        const ordenIdiomas = window.IDIOMAS_ORDEN;
-
         filas.forEach((f, i) => {
-            if (i === 0) return; // Saltar cabecera
-            
+            if (i === 0) return;
             const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             const id = parseInt(c[0]);
             
@@ -166,54 +108,48 @@ async function cargar() {
                 let item = {
                     id: id,
                     precio: c[1] || "0.00", 
-                    activa: (c[2] || "").trim().toUpperCase() === "SI" || (c[2] || "").trim().toUpperCase() === "SÍ",
-                    carpeta: c[4] || "",                  // Columna E (5) -> c[4]
-                    imagen: c[5] || "",                   // Columna F (6) -> c[5]
-                    alergenos: superLimpiar(c[6] || "")    // Columna G (7) -> c[6]
+                    activa: (c[2] || "").trim().toUpperCase() === "SI",
+                    carpeta: c[4] || "",
+                    imagen: c[5] || "",
+                    alergenos: superLimpiar(c[6])
                 };
                 
-                // Mapeo estable de todos los idiomas de tu estructura fija
-                ordenIdiomas.forEach(lang => {
-                    const idx = indicesIdiomas[lang];
-                    if (idx !== undefined && c[idx] !== undefined) {
-                        item[lang] = superLimpiar(c[idx]);
-                    } else {
-                        item[lang] = "";
-                    }
-                });
+                // MODIFICADO: Bucle dinámico basado en IDIOMAS_CSV_INDICES para evitar mapeos manuales
+                if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
+                    window.IDIOMAS_ORDEN.forEach(lang => {
+                        const index = window.IDIOMAS_CSV_INDICES[lang];
+                        if (index !== undefined && c[index] !== undefined) {
+                            item[lang] = superLimpiar(c[index]);
+                        }
+                    });
+                }
                 
-                window.datosLocales.push(item);
+                datosLocales.push(item);
             }
         });
         
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
-            statusCarga.innerText = `✅ Sincronizados ${window.datosLocales.length} platos (${ordenIdiomas.length} Idiomas)`;
+            statusCarga.innerText = `✅ Datos Sincronizados (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
             statusCarga.className = "status-ok";
         }
-        
         renderizar();
-        generarMenuAgrupado();
+        // NUEVO: Eliminada la llamada a renderizarSugerencias() para evitar conflictos con los scripts específicos RG y USOPEN
     } catch (e) { 
-        console.error("Error crítico en la carga de app.js:", e);
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
     }
 }
 
-// --- FUNCIÓN RENDERIZAR ---
 function renderizar() {
-    const editorContainerId = window.currentMode === 'USOPEN' ? 'editor-dinamico-usopen' : 'editor-dinamico';
-    const editorElement = document.getElementById(editorContainerId);
-    if (!editorElement) return;
-
     let h = "";
-    window.datosLocales.sort((a, b) => a.id - b.id);
+    datosLocales.sort((a, b) => a.id - b.id);
     
-    const estructuraBase = window.ESTRUCTURA;
+    // Validación de existencia de ESTRUCTURA
+    if (!window.ESTRUCTURA) return console.error("Error: ESTRUCTURA no definida en languages.js");
 
-    estructuraBase.forEach(cat => {
-        const platos = window.datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
+    ESTRUCTURA.forEach(cat => {
+        const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
         
         h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
@@ -245,51 +181,39 @@ function renderizar() {
         });
         h += `</div>`;
     });
-    editorElement.innerHTML = h;
-}
-
-function renderizarSugerencias() {
-    if (typeof window.renderSugerenciasLogic === 'function') {
-        window.renderSugerenciasLogic();
-    }
+    document.getElementById('editor-dinamico').innerHTML = h;
 }
 
 function moverPlato(id, direccion) {
-    const idx = window.datosLocales.findIndex(x => x.id === id);
+    const idx = datosLocales.findIndex(x => x.id === id);
     if (direccion === 'subir' && idx > 0) {
-        const temp = window.datosLocales[idx].id;
-        window.datosLocales[idx].id = window.datosLocales[idx-1].id;
-        window.datosLocales[idx-1].id = temp;
-    } else if (direccion === 'bajar' && idx < window.datosLocales.length - 1) {
-        const temp = window.datosLocales[idx].id;
-        window.datosLocales[idx].id = window.datosLocales[idx+1].id;
-        window.datosLocales[idx+1].id = temp;
+        const temp = datosLocales[idx].id;
+        datosLocales[idx].id = datosLocales[idx-1].id;
+        datosLocales[idx-1].id = temp;
+    } else if (direccion === 'bajar' && idx < datosLocales.length - 1) {
+        const temp = datosLocales[idx].id;
+        datosLocales[idx].id = datosLocales[idx+1].id;
+        datosLocales[idx+1].id = temp;
     }
     renderizar();
 }
 
-// --- EDITOR DE FORMULARIO MODAL ---
 function abrirEditor(id, esNuevo = false) {
-    let p = esNuevo ? datosTempNuevo : window.datosLocales.find(x => x.id === id);
+    let p = esNuevo ? datosTempNuevo : datosLocales.find(x => x.id === id);
+    if (!p) return; // NUEVO: Seguridad por si el plato no existe
+    
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
-    
-    const nombreLower = (p && p['es']) ? p['es'].toLowerCase() : "";
-    const esVino = (id >= 13000) || (id === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
-    
+    const esVino = (id >= 13000);
     const esCroqueta = (id >= 12100 && id <= 12299);
     const esCroquetaVeg = (id >= 12200 && id <= 12299);
     
     const labelUvas = document.getElementById('label-uvas');
-    if (labelUvas) {
-        labelUvas.innerText = esVino ? "Nombres y Detalles del Plato / Vino (Uvas)" : "Nombres y Detalles del Plato";
-    }
+    if (labelUvas) labelUvas.innerText = esVino ? "Nombres y Detalles del Plato / Vino (Uvas)" : "Nombres y Detalles del Plato";
     
     const dataEs = desglosarNombre(p['es'] || "");
-    const inputEditEs = document.getElementById('edit-es');
-    if (inputEditEs) {
-        inputEditEs.value = esVino ? formatWineName(dataEs.nombre) : dataEs.nombre;
-    }
+    const editEs = document.getElementById('edit-es');
+    if (editEs) editEs.value = esVino ? formatWineName(dataEs.nombre) : dataEs.nombre;
     
     const inputEsUvas = document.getElementById('edit-es-uvas');
     if (inputEsUvas) {
@@ -298,10 +222,8 @@ function abrirEditor(id, esNuevo = false) {
     }
 
     const dataEn = desglosarNombre(p['en'] || "");
-    const inputEditEn = document.getElementById('edit-en');
-    if (inputEditEn) {
-        inputEditEn.value = esVino ? formatWineName(dataEn.nombre) : dataEn.nombre;
-    }
+    const editEn = document.getElementById('edit-en');
+    if (editEn) editEn.value = esVino ? formatWineName(dataEn.nombre) : dataEn.nombre;
     
     const inputEnUvas = document.getElementById('edit-en-uvas');
     if (inputEnUvas) {
@@ -309,87 +231,91 @@ function abrirEditor(id, esNuevo = false) {
         inputEnUvas.style.display = esVino ? "block" : "none";
     }
     
-    let htmlRestoLangs = `<div class="langs-fluid-container">`;
-    window.IDIOMAS_ORDEN.forEach(l => {
-        if (l === 'es' || l === 'en') return;
-        const dataLang = desglosarNombre(p[l] || "");
-        const labelIdioma = window.IDIOMAS_CONFIG[l.toUpperCase()] || l.toUpperCase();
-        
-        htmlRestoLangs += `
-            <div class="input-row-lang">
-                <div class="lang-tag">${l.toUpperCase()}</div>
-                <div style="flex:1">
-                    <input id="edit-${l}" class="input-estandar input-nombre-corto" placeholder="Nombre en ${labelIdioma}" value="${esVino ? formatWineName(dataLang.nombre) : dataLang.nombre}">
-                    <input id="edit-${l}-uvas" class="input-estandar input-uvas" placeholder="Detalles / Grapes (${labelIdioma})" value="${dataLang.uvas}" style="display: ${esVino ? 'block' : 'none'};">
-                </div>
-            </div>`;
-    });
-    htmlRestoLangs += `</div>`;
-    
-    const contenedorResto = document.getElementById('contenedor-resto-idiomas');
-    if (contenedorResto) contenedorResto.innerHTML = htmlRestoLangs;
-    
-    const inputPrecio = document.getElementById('edit-precio');
-    if (inputPrecio) inputPrecio.value = p.precio;
-    
-    const inputImagen = document.getElementById('edit-imagen');
-    if (inputImagen) inputImagen.value = p.imagen;
-    
-    const actuales = (p.alergenos || "").split(',').map(s => s.trim().toUpperCase());
-    let alergenosHtml = "";
-    if (esVino) {
-        const sel = actuales.includes("🧪 SULFITOS") || actuales.includes("SULFITOS") ? 'selected' : '';
-        alergenosHtml = `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">🧪 SULFITOS</div>`;
-    } else {
-        alergenosHtml = ALERGENOS_LISTA.map(a => {
-            const sel = actuales.some(act => act.includes(a.split(" ").pop())) ? 'selected' : '';
-            return `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">${a}</div>`;
-        }).join('');
+    // Renderizado dinámico de idiomas adicionales
+    const containerResto = document.getElementById('contenedor-resto-idiomas');
+    if (containerResto && window.IDIOMAS_ORDEN) {
+        let htmlRestoLangs = `<div class="langs-fluid-container">`;
+        IDIOMAS_ORDEN.forEach(l => {
+            if (l === 'es' || l === 'en') return;
+            const dataLang = desglosarNombre(p[l] || "");
+            const labelIdioma = window.IDIOMAS_CONFIG ? (window.IDIOMAS_CONFIG[l.toUpperCase()] || l.toUpperCase()) : l.toUpperCase();
+            
+            htmlRestoLangs += `
+                <div class="input-row-lang">
+                    <div class="lang-tag">${l.toUpperCase()}</div>
+                    <div style="flex:1">
+                        <input id="edit-${l}" class="input-estandar input-nombre-corto" placeholder="Nombre en ${labelIdioma}" value="${esVino ? formatWineName(dataLang.nombre) : dataLang.nombre}">
+                        <input id="edit-${l}-uvas" class="input-estandar input-uvas" placeholder="Detalles / Grapes (${labelIdioma})" value="${dataLang.uvas}" style="display: ${esVino ? 'block' : 'none'};">
+                    </div>
+                </div>`;
+        });
+        htmlRestoLangs += `</div>`;
+        containerResto.innerHTML = htmlRestoLangs;
     }
     
-    const gridAlergenos = document.getElementById('alergenos-grid');
-    if (gridAlergenos) gridAlergenos.innerHTML = alergenosHtml;
+    const editPrecio = document.getElementById('edit-precio');
+    if (editPrecio) editPrecio.value = p.precio;
     
-    let croquetasHtml = "";
-    if (esCroqueta) {
-        croquetasHtml += `<div class="input-group"><label class="label-seccion">Sabores de Croquetas</label><div class="croquetas-grid">`;
-        
-        if (!esCroquetaVeg) {
-            croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title carne">Carne</div><div class="croqueta-cat-btns">`;
-            CROQUETAS_CONFIG.carne.forEach(c => {
-                croquetasHtml += `<div class="croqueta-btn carne" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
+    const editImagen = document.getElementById('edit-imagen');
+    if (editImagen) editImagen.value = p.imagen;
+    
+    const alergenosGrid = document.getElementById('alergenos-grid');
+    if (alergenosGrid) {
+        const actuales = (p.alergenos || "").split(',').map(s => s.trim().toUpperCase());
+        let alergenosHtml = "";
+        if (esVino) {
+            const sel = actuales.includes("🧪 SULFITOS") || actuales.includes("SULFITOS") ? 'selected' : '';
+            alergenosHtml = `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">🧪 SULFITOS</div>`;
+        } else {
+            alergenosHtml = ALERGENOS_LISTA.map(a => {
+                const sel = actuales.some(act => act.includes(a.split(" ").pop())) ? 'selected' : '';
+                return `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">${a}</div>`;
+            }).join('');
+        }
+        alergenosGrid.innerHTML = alergenosHtml;
+    }
+    
+    const containerCroquetas = document.getElementById('contenedor-croquetas');
+    if (containerCroquetas) {
+        let croquetasHtml = "";
+        if (esCroqueta) {
+            croquetasHtml += `<div class="input-group"><label class="label-seccion">Sabores de Croquetas</label><div class="croquetas-grid">`;
+            
+            if (!esCroquetaVeg) {
+                croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title carne">Carne</div><div class="croqueta-cat-btns">`;
+                CROQUETAS_CONFIG.carne.forEach(c => {
+                    croquetasHtml += `<div class="croqueta-btn carne" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
+                });
+                croquetasHtml += `</div></div>`;
+
+                croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title pescado">Pescado</div><div class="croqueta-cat-btns">`;
+                CROQUETAS_CONFIG.pescado.forEach(c => {
+                    croquetasHtml += `<div class="croqueta-btn pescado" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
+                });
+                croquetasHtml += `</div></div>`;
+            }
+
+            croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title vegetariana">Vegetarianas</div><div class="croqueta-cat-btns">`;
+            CROQUETAS_CONFIG.vegetariana.forEach(c => {
+                croquetasHtml += `<div class="croqueta-btn vegetariana" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
             });
             croquetasHtml += `</div></div>`;
 
-            croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title pescado">Pescado</div><div class="croqueta-cat-btns">`;
-            CROQUETAS_CONFIG.pescado.forEach(c => {
-                croquetasHtml += `<div class="croqueta-btn pescado" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
-            });
             croquetasHtml += `</div></div>`;
         }
-
-        croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title vegetariana">Vegetarianas</div><div class="croqueta-cat-btns">`;
-        CROQUETAS_CONFIG.vegetariana.forEach(c => {
-            croquetasHtml += `<div class="croqueta-btn vegetariana" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
-        });
-        croquetasHtml += `</div></div>`;
-
-        croquetasHtml += `</div></div>`;
-    }
-    
-    const contenedorCroquetas = document.getElementById('contenedor-croquetas');
-    if (contenedorCroquetas) contenedorCroquetas.innerHTML = croquetasHtml;
-
-    if (esCroqueta && p['es']) {
-        const todosSabores = [...CROQUETAS_CONFIG.carne, ...CROQUETAS_CONFIG.pescado, ...CROQUETAS_CONFIG.vegetariana];
-        todosSabores.forEach(sabor => {
-            if (p['es'].includes(sabor)) {
-                const btns = document.querySelectorAll('.croqueta-btn');
-                btns.forEach(btn => {
-                    if (btn.innerText.trim() === sabor) btn.classList.add('selected');
-                });
-            }
-        });
+        containerCroquetas.innerHTML = croquetasHtml;
+        
+        if (esCroqueta && p['es']) {
+            const todosSabores = [...CROQUETAS_CONFIG.carne, ...CROQUETAS_CONFIG.pescado, ...CROQUETAS_CONFIG.vegetariana];
+            todosSabores.forEach(sabor => {
+                if (p['es'].includes(sabor)) {
+                    const btns = document.querySelectorAll('.croqueta-btn');
+                    btns.forEach(btn => {
+                        if (btn.innerText.trim() === sabor) btn.classList.add('selected');
+                    });
+                }
+            });
+        }
     }
     
     comprobarRequisitosTraduccion();
@@ -402,8 +328,8 @@ function actualizarNombreCroquetas() {
     const seleccionadas = Array.from(document.querySelectorAll('.croqueta-btn.selected')).map(el => el.innerText.trim());
     
     if (seleccionadas.length === 0) {
-        const inputEditEs = document.getElementById('edit-es');
-        if (inputEditEs) inputEditEs.value = "";
+        const editEs = document.getElementById('edit-es');
+        if (editEs) editEs.value = "";
         comprobarRequisitosTraduccion();
         return;
     }
@@ -416,8 +342,8 @@ function actualizarNombreCroquetas() {
     let titulo = esCroquetaVeg ? "Croquetas Vegetarianas:" : "Surtido de Croquetas:";
     if (!esCroquetaVeg && soloVegetarianas) titulo = "Croquetas Vegetarianas:";
 
-    const inputEditEs = document.getElementById('edit-es');
-    if (inputEditEs) inputEditEs.value = `${titulo} ${textoCroquetas}`;
+    const editEs = document.getElementById('edit-es');
+    if (editEs) editEs.value = `${titulo} ${textoCroquetas}`;
     comprobarRequisitosTraduccion();
 }
 
@@ -426,42 +352,41 @@ function comprobarRequisitosTraduccion() {
     const editEn = document.getElementById('edit-en');
     const btnAuto = document.getElementById('btn-autotraducir');
     
-    if (editEs && editEn && btnAuto) {
-        const esValido = editEs.value.trim() !== "" && editEn.value.trim() !== "";
-        btnAuto.disabled = !esValido;
-    }
+    const esValido = editEs && editEn && editEs.value.trim() !== "" && editEn.value.trim() !== "";
+    if (btnAuto) btnAuto.disabled = !esValido;
 }
 
-// --- INTEGRACIÓN INTELIGENTE CON GEMINI AI ---
 async function generarTraduccionEN() {
-    const editEs = document.getElementById('edit-es');
-    const nombreEs = editEs ? editEs.value.trim() : "";
-    
-    const nombreLower = nombreEs.toLowerCase();
-    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
-    
-    const editEsUvas = document.getElementById('edit-es-uvas');
-    const uvasEs = (esVino && editEsUvas) ? editEsUvas.value.trim() : "";
+    const nombreEs = document.getElementById('edit-es').value.trim();
+    const esVino = (platoEditandoId >= 13000);
+    const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
     
     if (!nombreEs) {
         alert("❌ Debes introducir primero el nombre en Español.");
         return;
     }
 
-    if (typeof getKeys !== 'function' || getKeys().length === 0) {
-        alert("❌ No hay API Keys de Gemini configuradas.");
+    // NUEVO: Función auxiliar para obtener keys (importada desde ui.js o state)
+    let keys = [];
+    if (typeof getKeys === 'function') {
+        keys = getKeys();
+    } else if (window.UI && typeof window.UI.getKeysList === 'function') {
+        // Fallback por si la estructura de UI cambia
+        keys = window.UI.getKeysList();
+    }
+
+    if (keys.length === 0) {
+        alert("❌ No hay API Keys de Gemini configuradas. Añade al menos una en el panel superior.");
         return;
     }
-    const keys = getKeys();
 
     const btn = document.getElementById('btn-generar-en');
-    const originalText = btn ? btn.innerText : "Generar";
-    if (btn) {
-        btn.innerText = "🇬🇧 Generando opciones...";
-        btn.disabled = true;
-    }
+    const originalText = btn.innerText;
+    btn.innerText = "🇬🇧 Generando opciones...";
+    btn.disabled = true;
 
     const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
+
     const URL_MODELO = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
     const instruccion = `Actúa como un translator profesional de menús de restaurantes. Te paso un elemento en español: "${textoCompletoEs}".
     ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original (ej: EL COTO (D.O. Rioja)).' : ''}
@@ -491,6 +416,10 @@ async function generarTraduccionEN() {
 
             if (!response.ok || data.error) {
                 ultimoError = data.error?.message || "Error HTTP " + response.status;
+                console.warn(`Error con Key ${intentos + 1}, rotando...`, ultimoError);
+                if (data.error?.code === 429 || response.status === 429) {
+                    await new Promise(r => setTimeout(r, 3000));
+                }
                 intentos++;
                 continue;
             }
@@ -508,6 +437,7 @@ async function generarTraduccionEN() {
             }
         } catch (err) {
             ultimoError = err.message;
+            console.error(`Error procesando Key ${intentos + 1}:`, err);
             intentos++;
         }
     }
@@ -518,16 +448,16 @@ async function generarTraduccionEN() {
         alert("❌ Error al generar las opciones en Inglés.\nDetalles: " + ultimoError);
     }
 
-    if (btn) {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
+    btn.innerText = originalText;
+    btn.disabled = false;
 }
 
 function abrirModalTraduccionEN(opciones) {
     const container = document.getElementById('opciones-en-container');
     const textarea = document.getElementById('editar-opcion-en');
-    if (textarea) textarea.value = "";
+    if (!container || !textarea) return;
+
+    textarea.value = "";
     opcionesENActuales = [];
 
     let html = "";
@@ -550,31 +480,25 @@ function abrirModalTraduccionEN(opciones) {
         }
     }
 
-    if (container) container.innerHTML = html;
-    const modalTraduccion = document.getElementById('modal-traduccion-en');
-    if (modalTraduccion) modalTraduccion.style.display = 'flex';
+    container.innerHTML = html;
+    document.getElementById('modal-traduccion-en').style.display = 'flex';
 }
 
 function seleccionarOpcionEN(elemento, index) {
     document.querySelectorAll('.opcion-en-btn').forEach(el => el.classList.remove('selected'));
     elemento.classList.add('selected');
-    const textarea = document.getElementById('editar-opcion-en');
-    if (textarea) textarea.value = opcionesENActuales[index];
+    document.getElementById('editar-opcion-en').value = opcionesENActuales[index];
 }
 
 function confirmarTraduccionEN() {
-    const textarea = document.getElementById('editar-opcion-en');
-    const textoFinal = textarea ? textarea.value.trim() : "";
+    const textoFinal = document.getElementById('editar-opcion-en').value.trim();
     if (!textoFinal) {
         alert("❌ Selecciona una opción o escribe la traducción antes de confirmar.");
         return;
     }
     
-    let p = window.datosLocales.find(x => x.id === platoEditandoId) || {};
-    const nombreLower = (p['es'] || "").toLowerCase();
-    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
-
     const desglosado = desglosarNombre(textoFinal);
+    const esVino = (platoEditandoId >= 13000);
     const editEn = document.getElementById('edit-en');
     if (editEn) editEn.value = esVino ? formatWineName(desglosado.nombre) : desglosado.nombre;
     
@@ -588,48 +512,53 @@ function confirmarTraduccionEN() {
 }
 
 function cerrarModalTraduccionEN() {
-    const modalTraduccion = document.getElementById('modal-traduccion-en');
-    if (modalTraduccion) modalTraduccion.style.display = 'none';
+    const modal = document.getElementById('modal-traduccion-en');
+    if (modal) modal.style.display = 'none';
 }
 
 async function ejecutarTraduccionAutomatica() {
     const btn = document.getElementById('btn-autotraducir');
-    const originalText = btn ? btn.innerText : "";
-    if (btn) {
-        btn.innerText = "✨ Traduciendo con Gemini 2.5...";
-        btn.disabled = true;
+    if (!btn) return;
+    
+    const originalText = btn.innerText;
+    btn.innerText = "✨ Traduciendo con Gemini 2.5...";
+    btn.disabled = true;
+    
+    const nombreEs = document.getElementById('edit-es').value.trim();
+    const nombreEn = document.getElementById('edit-en').value.trim();
+    const esVino = (platoEditandoId >= 13000);
+    const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
+    const uvasEn = esVino ? document.getElementById('edit-en-uvas').value.trim() : "";
+    
+    // NUEVO: Obtener keys de forma segura
+    let keys = [];
+    if (typeof getKeys === 'function') {
+        keys = getKeys();
+    } else if (window.UI && typeof window.UI.getKeysList === 'function') {
+        keys = window.UI.getKeysList();
     }
     
-    const editEs = document.getElementById('edit-es');
-    const editEn = document.getElementById('edit-en');
-    const nombreEs = editEs ? editEs.value.trim() : "";
-    const nombreEn = editEn ? editEn.value.trim() : "";
-    
-    const nombreLower = nombreEs.toLowerCase();
-    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
-    
-    const editEsUvas = document.getElementById('edit-es-uvas');
-    const editEnUvas = document.getElementById('edit-en-uvas');
-    const uvasEs = (esVino && editEsUvas) ? editEsUvas.value.trim() : "";
-    const uvasEn = (esVino && editEnUvas) ? editEnUvas.value.trim() : "";
-    
-    if (typeof getKeys !== 'function' || getKeys().length === 0) {
-        alert("❌ No hay API Keys de Gemini configuradas.");
-        if (btn) { btn.innerText = originalText; btn.disabled = false; }
+    if (keys.length === 0) {
+        alert("❌ No hay API Keys de Gemini configuradas. Añade al menos una en el panel superior.");
+        btn.innerText = originalText;
+        btn.disabled = false;
         return;
     }
-    const keys = getKeys();
     
     const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
     const textoCompletoEn = (nombreEn + (uvasEn ? ' // ' + uvasEn : '')).replace(/"/g, "'");
     
-    const idiomasObjetivo = window.IDIOMAS_ORDEN.filter(l => l !== 'es' && l !== 'en');
+    const idiomasObjetivo = window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.filter(l => l !== 'es' && l !== 'en') : [];
     const URL_MODELO = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
     
     const instruccion = `Actúa como un traductor experto de menús de restaurantes. Traduce el siguiente elemento basándote en su texto en Español: "${textoCompletoEs}" ${textoCompletoEn ? `y su texto en Inglés (como referencia): "${textoCompletoEn}"` : ''}.
     ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado para todos los idiomas. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original en todos los idiomas (ej: EL COTO (D.O. Rioja)).' : ''}
+    
     Traduce a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
-    Responde EXCLUSIVAMENTE con un objeto JSON válido.`;
+    
+    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\").
+    Usa los códigos ISO como claves.
+    Ejemplo de formato de respuesta esperado: {"de": "Nombre // Uva", "fr": "Nombre // Uva"}`;
     
     let exito = false;
     let intentos = 0;
@@ -648,6 +577,10 @@ async function ejecutarTraduccionAutomatica() {
             
             if (!response.ok || data.error) {
                 ultimoError = data.error?.message || "Error HTTP " + response.status;
+                console.warn(`Error con Key ${intentos + 1}, rotando...`, ultimoError);
+                if (data.error?.code === 429 || response.status === 429) {
+                    await new Promise(r => setTimeout(r, 3000));
+                }
                 intentos++;
                 continue; 
             }
@@ -669,47 +602,54 @@ async function ejecutarTraduccionAutomatica() {
                         }
                     }
                 });
+                
                 exito = true;
+            } else {
+                throw new Error("La respuesta de Gemini no contiene texto válido.");
             }
         } catch (err) {
             ultimoError = err.message;
+            console.error(`Error procesando Key ${intentos + 1}:`, err);
             intentos++;
         }
     }
     
-    if (!exito) alert("❌ Error al traducir con Gemini: " + ultimoError);
-    if (btn) { btn.innerText = originalText; btn.disabled = false; }
+    if (!exito) {
+        alert("❌ Error al traducir con Gemini.\nDetalles del error: " + ultimoError);
+    }
+    
+    btn.innerText = originalText;
+    btn.disabled = false;
 }
 
-// --- GUARDAR EN ARRAY LOCAL ---
 function aplicarCambiosPlato() {
-    let p = esNuevoPlato ? datosTempNuevo : window.datosLocales.find(x => x.id === platoEditandoId);
-    if (esNuevoPlato) window.datosLocales.push(p);
+    let p = esNuevoPlato ? datosTempNuevo : datosLocales.find(x => x.id === platoEditandoId);
+    if (!p) return;
     
-    const inputEditEs = document.getElementById('edit-es');
-    const nombreLower = inputEditEs ? inputEditEs.value.toLowerCase() : "";
-    const esVino = (platoEditandoId >= 13000) || (platoEditandoId === 12990) || (nombreLower.includes('vino') && !nombreLower.includes('copa'));
+    if (esNuevoPlato) datosLocales.push(p);
+    
+    const esVino = (platoEditandoId >= 13000);
 
-    window.IDIOMAS_ORDEN.forEach(l => {
-        const inputField = document.getElementById(`edit-${l}`);
-        let nom = inputField ? superLimpiar(inputField.value) : "";
-        
-        const inputUva = document.getElementById(`edit-${l}-uvas`);
-        const uvas = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
-        
-        if (esVino) nom = formatWineName(nom);
-        p[l] = uvas ? `${nom} // ${uvas}` : nom;
-    });
+    if (window.IDIOMAS_ORDEN) {
+        IDIOMAS_ORDEN.forEach(l => {
+            let nom = superLimpiar(document.getElementById(`edit-${l}`)?.value || "");
+            const inputUva = document.getElementById(`edit-${l}-uvas`);
+            const uvas = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
+            
+            if (esVino) nom = formatWineName(nom);
+            
+            p[l] = uvas ? `${nom} // ${uvas}` : nom;
+        });
+    }
     
-    const inputPrecio = document.getElementById('edit-precio');
-    let preVal = inputPrecio ? inputPrecio.value || "0.00" : "0.00";
+    let preVal = document.getElementById('edit-precio').value || "0.00";
     p.precio = parseFloat(preVal).toFixed(2);
     if(isNaN(p.precio)) p.precio = "0.00";
     
-    const inputImagen = document.getElementById('edit-imagen');
-    p.imagen = inputImagen ? superLimpiar(inputImagen.value) : "";
+    p.imagen = superLimpiar(document.getElementById('edit-imagen').value);
     
-    p.alergenos = Array.from(document.querySelectorAll('.alergeno-btn.selected')).map(el => {
+    const selectedAlergenos = document.querySelectorAll('.alergeno-btn.selected');
+    p.alergenos = Array.from(selectedAlergenos).map(el => {
         let rawText = el.innerText.trim();
         let spaceIdx = rawText.indexOf(' ');
         return spaceIdx !== -1 ? rawText.substring(spaceIdx + 1).trim() : rawText;
@@ -719,13 +659,11 @@ function aplicarCambiosPlato() {
     renderizar();
 }
 
-// --- CREACIÓN DE NUEVOS PLATOS ---
 function generarMenuAgrupado() {
+    if (!window.ESTRUCTURA) return;
+    
     let h = "";
-    const container = document.getElementById('lista-agrupada');
-    if (!container) return;
-
-    window.ESTRUCTURA.forEach(cat => {
+    ESTRUCTURA.forEach(cat => {
         h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${cat.name}</div>`;
         if (cat.sub) {
             cat.sub.forEach(s => {
@@ -736,93 +674,123 @@ function generarMenuAgrupado() {
         }
         h += `</div>`;
     });
-    container.innerHTML = h;
+    const listaAgrupada = document.getElementById('lista-agrupada');
+    if (listaAgrupada) listaAgrupada.innerHTML = h;
 }
 
 function prepararNuevoPlato(baseId, folder) {
+    if (!window.ESTRUCTURA) return;
+
     let maxPermitido = baseId + 99;
-    window.ESTRUCTURA.forEach(cat => {
+    ESTRUCTURA.forEach(cat => {
         if (cat.sub) {
             const sub = cat.sub.find(s => s.id === baseId);
             if (sub && sub.max) maxPermitido = sub.max;
         }
     });
 
-    const similares = window.datosLocales.filter(p => p.id >= baseId && p.id <= maxPermitido);
+    const similares = datosLocales.filter(p => p.id >= baseId && p.id <= maxPermitido);
     const nuevoId = similares.length > 0 ? Math.max(...similares.map(p => p.id)) + 1 : baseId;
     
     if (nuevoId > maxPermitido) {
-        alert("Límite de IDs alcanzado.");
+        alert("Límite de IDs alcanzado para esta subcategoría específica.");
         return;
     }
 
-    datosTempNuevo = { id: nuevoId, precio: "0.00", activa: true, carpeta: folder, imagen: "", alergenos: "" };
+    datosTempNuevo = { 
+        id: nuevoId, 
+        precio: "0.00", 
+        activa: true, 
+        carpeta: folder, 
+        imagen: "", 
+        alergenos: "" 
+    };
     
-    if (baseId >= 12200 && baseId <= 12299) datosTempNuevo.imagen = "croquetasvegetarianas01.webp";
-    else if (baseId >= 12100 && baseId <= 12199) datosTempNuevo.imagen = "croquetas01.webp";
+    if (baseId >= 12200 && baseId <= 12299) {
+        datosTempNuevo.imagen = "croquetasvegetarianas01.webp";
+    } else if (baseId >= 12100 && baseId <= 12199) {
+        datosTempNuevo.imagen = "croquetas01.webp";
+    }
     
-    window.IDIOMAS_ORDEN.forEach(l => { datosTempNuevo[l] = ""; });
+    if (window.IDIOMAS_ORDEN) {
+        IDIOMAS_ORDEN.forEach(l => { datosTempNuevo[l] = ""; });
+    }
     datosTempNuevo['es'] = "NUEVO ELEMENTO";
 
     cerrarModal('modal-selector');
     abrirEditor(nuevoId, true);
 }
 
-// --- SUBIR DATOS AL EXCEL REMOTO (POST) ---
 async function enviarAlExcel() {
     const btn = document.querySelector('.btn-guardar-main');
-    const textoOriginal = btn ? btn.innerText : "";
-    if (btn) { btn.innerText = "⏳ SUBIENDO..."; btn.disabled = true; }
+    if (!btn) return;
     
-    window.datosLocales.sort((a, b) => a.id - b.id);
+    const textoOriginal = btn.innerText;
+    btn.innerText = "⏳ SUBIENDO Y ORDENANDO COLUMNAS..."; 
+    btn.disabled = true;
     
-    // Mapeo saliente idéntico al esquema esperado por doPost() en tu Código.gs
-    const payload = window.datosLocales.map(p => {
-        let obj = { 
+    if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+        UI.log('[Editor] Compilando matriz y enviando cambios distribuidos a Google Sheets...');
+    }
+    
+    datosLocales.sort((a, b) => a.id - b.id);
+    
+    // MODIFICADO: Bucle dinámico para evitar mapeos manuales en el payload
+    const payload = datosLocales.map(p => {
+        let obj = {
             id: p.id, 
             precio: p.precio, 
             estado: p.activa ? 'si' : 'no', 
             carpeta: p.carpeta, 
             imagen: p.imagen, 
-            alergenos: p.alergenos 
+            alergenos: p.alergenos
         };
-        // Inyecta dinámicamente propiedades en minúsculas (nombre_es, nombre_en, etc.) como lee el Apps Script
-        window.IDIOMAS_ORDEN.forEach(l => { 
-            obj[`nombre_${l}`] = p[l] || ""; 
-        });
+        if (window.IDIOMAS_ORDEN) {
+            IDIOMAS_ORDEN.forEach(l => {
+                obj[`nombre_${l}`] = p[l] || "";
+            });
+        }
         return obj;
     });
     
     try {
-        if (typeof window.getWebAppUrl !== 'function') {
-            alert("Error: getWebAppUrl() no está disponible.");
-            if (btn) { btn.disabled = false; btn.innerText = textoOriginal; }
-            return;
-        }
-        const urlDestino = window.getWebAppUrl();
-        await fetch(urlDestino, { 
+        const urlDestino = getWebAppUrlSafe();
+        
+        console.log(`[Editor-Debug] Enviando a URL: ${urlDestino}`);
+        console.log(`[Editor-Debug] Tamaño del payload: ${(new Blob([JSON.stringify(payload)])).size / 1024} KB`);
+        console.log(`[Editor-Debug] Muestra del primer elemento del payload:`, payload[0]);
+        
+        const response = await fetch(urlDestino, { 
             method: 'POST', 
             mode: 'no-cors', 
-            headers: { 'Content-Type': 'application/json' }, 
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload) 
         });
-        alert("✅ Cambios enviados con éxito.");
+        
+        console.log(`[Editor-Debug] Fetch finalizado. Tipo de respuesta: ${response.type}, Status: ${response.status}`);
+        
+        if (response.type === 'opaque') {
+            console.warn("[Editor-Debug] Modo 'no-cors' activo: El navegador ha ocultado la respuesta del servidor. Verifica tu Google Sheet manualmente.");
+        }
+        
+        alert("✅ Petición de guardado enviada. (Nota: En modo no-cors no podemos confirmar el éxito total, revisa el Excel).");
         location.reload();
     } catch (e) { 
-        alert("Error de conexión al enviar datos."); 
-        if (btn) { btn.disabled = false; btn.innerText = textoOriginal; }
+        alert("Error al intentar impactar los datos en Google Sheets."); 
+        console.error("❌ [Editor-Debug] Error de red: ", e);
+        btn.disabled = false; 
+        btn.innerText = textoOriginal; 
     }
 }
 
-// --- INTERFACES BÁSICAS ---
 function toggleActivo(id, v) { 
-    const p = window.datosLocales.find(x => x.id === id);
+    const p = datosLocales.find(x => x.id === id);
     if(p) p.activa = v; 
 }
 
 function abrirSelector() { 
-    const modalSelector = document.getElementById('modal-selector');
-    if (modalSelector) modalSelector.style.display = 'block'; 
+    const modal = document.getElementById('modal-selector');
+    if (modal) modal.style.display = 'block'; 
 }
 
 function cerrarModal(id) { 
@@ -830,19 +798,72 @@ function cerrarModal(id) {
     if (modal) modal.style.display = 'none'; 
 }
 
-// Inicialización controlada por el DOM
-document.addEventListener('DOMContentLoaded', () => {
-    cargar();
-    const editPrecioInput = document.getElementById('edit-precio');
-    if (editPrecioInput) {
-        editPrecioInput.addEventListener('input', function() {
-            if (this.value.includes('.')) {
-                let parts = this.value.split('.');
-                if (parts[1] && parts[1].length > 2) {
-                    parts[1] = parts[1].substring(0, 2);
-                    this.value = parts.join('.');
-                }
-            }
-        });
+// --- SISTEMA DE GESTIÓN DE API KEYS EN LOCAL ---
+function actualizarListaKeys() {
+    if (typeof UI !== 'undefined' && typeof UI.actualizarListaKeys === 'function') {
+        UI.actualizarListaKeys();
+        return;
     }
-});
+
+    const select = document.getElementById('selectKeys');
+    const keys = getKeys();
+    
+    if (!select) return;
+    
+    if (keys.length === 0) {
+        select.innerHTML = '<option value="">No hay API Keys</option>';
+        select.disabled = true;
+        return;
+    }
+    
+    select.disabled = false;
+    select.innerHTML = keys.map((k, i) => {
+        const resumida = `${k.substring(0, 6)}...${k.substring(k.length - 4)}`;
+        return `<option value="${k}">Key ${i + 1}: ${resumida}</option>`;
+    }).join('');
+}
+
+function agregarKey() {
+    const input = document.getElementById('nuevaKey');
+    if (input && input.value.trim()) {
+        saveKey(input.value.trim());
+        input.value = "";
+        
+        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+            UI.log('[Editor] Nueva API Key agregada con éxito.');
+        }
+        actualizarListaKeys();
+    }
+}
+
+function eliminarKeySeleccionada() {
+    const select = document.getElementById('selectKeys');
+    if (select && select.value) {
+        deleteKey(select.value);
+        
+        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+            UI.log('[Editor] API Key removida del almacenamiento local.');
+        }
+        actualizarListaKeys();
+    } else {
+        alert("No hay ninguna Key seleccionada para eliminar.");
+    }
+}
+
+// Inicialización automática al cargar la página
+cargar();
+actualizarListaKeys();
+
+// NUEVO: Restringir input de precio a estrictamente 2 decimales
+const editPrecioInput = document.getElementById('edit-precio');
+if (editPrecioInput) {
+    editPrecioInput.addEventListener('input', function() {
+        if (this.value.includes('.')) {
+            let parts = this.value.split('.');
+            if (parts[1] && parts[1].length > 2) {
+                parts[1] = parts[1].substring(0, 2);
+                this.value = parts.join('.');
+            }
+        }
+    });
+}
