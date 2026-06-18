@@ -105,7 +105,8 @@ async function cargar() {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
-        const resp = await fetch(url + '&t=' + Date.now());
+        // MODIFICADO: Añadida opción { cache: "no-store" } para forzar petición fresca y evitar cachés HTTP agresivas
+        const resp = await fetch(url + '&t=' + Date.now(), { cache: "no-store" });
         const text = await resp.text();
         
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
