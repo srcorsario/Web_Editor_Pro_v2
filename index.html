@@ -9,7 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <!-- ELIMINADO: Script de configuración redundante en <head> para evitar conflictos con config.js -->
 </head>
 <body>
 
@@ -34,11 +33,16 @@
         </div>
 
         <div class="tabs-container">
+            <!-- Grupo Izquierdo: Roland Garros -->
             <button class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
-            <button class="tab-btn" onclick="switchTab('pro', this)">2. Traductor Pro</button>
-            <button class="tab-btn" onclick="switchTab('sugerencias', this)">3. Sugerencias RG</button>
-            <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">4. Sugerencias USOpen</button>
-            <button class="tab-btn" onclick="switchTab('editor-usopen', this)">5. Editor Carta USOpen</button>
+            <button class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
+
+            <!-- Grupo Central: Traductor Pro -->
+            <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">2. Traductor Pro</button>
+
+            <!-- Grupo Derecho: US Open -->
+            <button class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
+            <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
         </div>
 
         <div id="tab-editor" class="tab-content active">
