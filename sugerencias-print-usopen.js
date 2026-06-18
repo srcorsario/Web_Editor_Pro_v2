@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.3.0-USOPEN-Compact"; // Versión actualizada
+    const VERSION = "v2.5.0-USOPEN-Wine-Only-Opt";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -9,40 +9,39 @@
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
         @page { size: A4; margin: 0; }
         .sugerencias-panel { 
-            background: #ffffff !important; padding: 20px 30px !important; width: 210mm !important; /* Reducido padding */
+            background: #ffffff !important; padding: 20px 30px !important; width: 210mm !important; 
             min-height: 297mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important;
             box-sizing: border-box !important; display: flex !important; flex-direction: column !important;
         }
         .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 15px !important; position: relative !important; }
         .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
-        .sugerencias-title-es { font-weight: 700 !important; font-size: 1.5rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } /* Reducido */
-        .sugerencias-title-en { font-weight: 300 !important; font-size: 1.1rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; } /* Reducido */
+        .sugerencias-title-es { font-weight: 700 !important; font-size: 1.5rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
+        .sugerencias-title-en { font-weight: 300 !important; font-size: 1.1rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; } 
         .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
         
-        .sugerencias-logo-img { width: 150px !important; height: auto !important; object-fit: contain !important; } /* Reducido */
+        .sugerencias-logo-img { width: 150px !important; height: auto !important; object-fit: contain !important; } 
         
         .sugerencias-body { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; }
         .sugerencias-seccion { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 15px !important; }
         .sugerencias-seccion-titulo { font-size: 0.9rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 10px !important; text-transform: uppercase !important; }
         
-        .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 8px !important; width: 100% !important; } /* Reducido */
+        .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 8px !important; width: 100% !important; } 
         .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
-        .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; } /* Reducido */
-        .sugerencias-nombre-en { font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; margin-top: 1px !important; }
+        .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; } 
         
-        .sugerencias-detalles-uvas { display: block !important; font-size: 0.75rem !important; font-weight: normal !important; color: #475569 !important; margin-top: 1px !important; }
-        .sugerencias-detalles-uvas-en { display: block !important; font-size: 0.7rem !important; font-weight: normal !important; color: #64748b !important; font-style: italic !important; }
+        /* NUEVO: Estilo para uvas inline en vinos */
+        .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 6px !important; font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; font-weight: normal !important; }
 
         .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 3px !important; align-items: center !important; }
-        .sugerencias-alergeno-icon { display: inline-block !important; width: 18px !important; height: 18px !important; object-fit: contain !important; vertical-align: middle !important; } /* Reducido */
+        .sugerencias-alergeno-icon { display: inline-block !important; width: 18px !important; height: 18px !important; object-fit: contain !important; vertical-align: middle !important; } 
         .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
-        .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; } /* Reducido */
+        .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; } 
         
         .sugerencias-footer { margin-top: auto !important; padding-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: flex-end !important; width: 100% !important; }
         .sugerencias-advertencia-alergenos { font-size: 0.65rem !important; color: #64748b !important; max-width: 65% !important; line-height: 1.3 !important; text-align: left !important; font-style: italic !important; margin-bottom: 5px !important; }
         .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 5px !important; margin-left: auto !important; }
         
-        .sugerencias-qr-img { width: 100px !important; height: 100px !important; object-fit: contain !important; } /* Reducido */
+        .sugerencias-qr-img { width: 100px !important; height: 100px !important; object-fit: contain !important; } 
         
         .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
         
@@ -54,6 +53,7 @@
     `;
     document.head.appendChild(stylePrintUsOpen);
 
+    // ASEGURAMOS LA FUNCIÓN GLOBAL
     if (!window.desglosarNombre) {
         window.desglosarNombre = function(texto) { 
             if (!texto) return { nombre: "", uvas: "" };
@@ -130,18 +130,35 @@
                 }
                 
                 const objEs = window.desglosarNombre(p.es);
-                const objEn = window.desglosarNombre(p.en);
+                // Detectar si es vino por ID o por nombre (RG usa IDs >= 13000, USOpen usa lógica de texto "vino"). Aplicamos la misma lógica "quitar inglés solo en vino".
+                const esVino = (id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta')));
+                
+                let htmlNombreEs = "";
+                let htmlNombreEn = "";
+
+                if (esVino) {
+                    // EXCEPCIÓN VINO: Solo Español, Uvas Inline
+                    if (objEs.uvas) {
+                        htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre} <span class="sugerencias-detalles-uvas-inline">(${objEs.uvas})</span></span>`;
+                    } else {
+                        htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
+                    }
+                } else {
+                    // ESTÁNDAR: Español e Inglés en líneas separadas
+                    htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>` + 
+                                    (objEs.uvas ? `<span class="sugerencias-detalles-uvas">${objEs.uvas}</span>` : '');
+                    
+                    htmlNombreEn = `<span class="sugerencias-nombre-en">${objEn.nombre}</span>` + 
+                                  (objEn.uvas ? `<span class="sugerencias-detalles-uvas-en">${objEn.uvas}</span>` : '');
+                }
+
                 const precioFormateado = p.precio ? parseFloat(p.precio).toFixed(2) + '€' : '0.00€';
 
                 h += `
                     <div class="sugerencias-plato">
                         <div class="sugerencias-plato-nombres">
-                            <span class="sugerencias-nombre-es">${objEs.nombre}</span>
-                            ${objEs.uvas ? `<span class="sugerencias-detalles-uvas">${objEs.uvas}</span>` : ''}
-                            
-                            <span class="sugerencias-nombre-en">${objEn.nombre}</span>
-                            ${objEn.uvas ? `<span class="sugerencias-detalles-uvas-en">${objEn.uvas}</span>` : ''}
-                            
+                            ${htmlNombreEs}
+                            ${htmlNombreEn}
                             ${iconsHtml}
                         </div>
                         <div class="sugerencias-puntos"></div>
