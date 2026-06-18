@@ -1,12 +1,15 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.36-CACHE-BUST-V2'; 
+window.APP_VERSIONS.app = '1.0.37-CDN-RETRY-LOGIC'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
 // NUEVO: Flag global para controlar cambios sin guardar
 window.hayCambiosSinGuardar = false;
+
+// NUEVO: Marca de tiempo del último intento de guardado para validar lecturas posteriores
+window.lastSaveAttempt = 0;
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -93,8 +96,10 @@ function extraerJSON(texto) {
     throw new Error("No se encontró un JSON válido en la respuesta de la IA.");
 }
 
-async function cargar() {
-    console.log("[Editor] Cargando datos...");
+async function cargar(retryCount = 0) {
+    const MAX_RETRIES = 3;
+    
+    console.log("[Editor] Cargando datos..." + (retryCount > 0 ? `(Reintento ${retryCount}/${MAX_RETRIES})` : ""));
     try {
         const url = getCsvUrlSafe();
         if (!url) return;
@@ -105,14 +110,35 @@ async function cargar() {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
-        // MODIFICADO: Se usa parámetro 'zx' (estándar de Google para bypass) y cabeceras forzadas
-        // Esto evita que el balanceador de carga de Google retenga versiones antiguas del CSV en endpoints /pub
+        // MODIFICADO: Se usa parámetro 'zx' y cabeceras forzadas
         const resp = await fetch(url + '&zx=' + Date.now(), { 
             cache: "no-store",
             headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
         });
         const text = await resp.text();
         
+        // NUEVO: Verificación de estancamiento de CDN
+        // Si guardamos recientemente (menos de 60s) y el archivo del servidor es más viejo que nuestro guardado, es caché sucia.
+        const lastModifiedHeader = resp.headers.get('Last-Modified');
+        const isStale = window.lastSaveAttempt > 0 && lastModifiedHeader && (new Date(lastModifiedHeader).getTime() < window.lastSaveAttempt);
+        
+        if (isStale && retryCount < MAX_RETRIES) {
+            console.warn(`[Editor] ⚠️ CDN Stale Detectado: El servidor indica archivo modificado el ${lastModifiedHeader}, pero guardamos a las ${new Date(window.lastSaveAttempt).toLocaleTimeString()}. Reintentando...`);
+            if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+                UI.log(`[Warning] El servidor devolvió datos antiguos (Caché Google). Forzando reintento ${retryCount + 1}...`);
+            }
+            // Esperar 500ms y reintentar para dar chance a que el balanceador cambie de nodo
+            await new Promise(r => setTimeout(r, 500));
+            return cargar(retryCount + 1);
+        }
+        
+        if (isStale && retryCount >= MAX_RETRIES) {
+            console.error("[Editor] ❌ Máximos reintentos alcanzados para obtener datos frescos. Google CDN sigue desactualizado.");
+            if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+                UI.log('[Error] Google tarda mucho en propagar. Se mostrarán datos posiblemente antiguos tras varios intentos.');
+            }
+        }
+
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
         
@@ -766,8 +792,9 @@ async function enviarAlExcel() {
     btn.innerText = "⏳ ENVIANDO..."; 
     btn.disabled = true;
     
-    // NUEVO: Actualizar texto del botón y resetear flag de cambios
+    // NUEVO: Actualizar texto del botón, resetear flag y marcar tiempo de guardado para validación
     console.log("[Editor] Guardando cambios...");
+    window.lastSaveAttempt = Date.now();
     
     datosLocales.sort((a, b) => a.id - b.id);
     
