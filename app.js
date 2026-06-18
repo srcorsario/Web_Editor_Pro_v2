@@ -1,9 +1,12 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.34-DEBUG-FIX'; 
+window.APP_VERSIONS.app = '1.0.35-RETOQUE-VISUAL'; 
 
-console.group("%c[DEBUG] app.js CARGADO", "color: green; font-size: 14px; font-weight: bold;");
+console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
+
+// NUEVO: Flag global para controlar cambios sin guardar
+window.hayCambiosSinGuardar = false;
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -25,36 +28,16 @@ const CROQUETAS_CONFIG = {
     vegetariana: ["Setas", "Coliflor con curry"]
 };
 
-// NUEVO: Puente de seguridad para acceder a la configuración global.
-// MODIFICADO: Prioridad estricta a la variable global dinámica (window.CSV_URL) sobre la configuración estática.
 function getWebAppUrlSafe() {
-    console.log("[DEBUG] getWebAppUrlSafe llamado.");
-    if (typeof window.WEB_APP_URL !== 'undefined') {
-        console.log(`[DEBUG] getWebAppUrlSafe usando window.WEB_APP_URL: ${window.WEB_APP_URL.substring(0, 40)}...`);
-        return window.WEB_APP_URL;
-    }
-    if (typeof window.getWebAppUrl === 'function') {
-        console.log("[DEBUG] getWebAppUrlSafe usando window.getWebAppUrl (fallback).");
-        return window.getWebAppUrl();
-    }
-    console.error("[DEBUG] ERROR: WEB_APP_URL no está definida globalmente.");
+    if (typeof window.WEB_APP_URL !== 'undefined') return window.WEB_APP_URL;
+    if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl();
     return '';
 }
 
 function getCsvUrlSafe() {
-    console.log("[DEBUG] getCsvUrlSafe llamado.");
-    // CAMBIADO: Verificar primero la variable global dinámica (controlada por index.html/pestañas)
-    if (typeof window.CSV_URL !== 'undefined') {
-        console.log(`[DEBUG] getCsvUrlSafe usando window.CSV_URL: ${window.CSV_URL.substring(0, 60)}...`);
-        return window.CSV_URL;
-    }
-    // Fallback a config estática si no se ha definido global
-    if (typeof window.getCsvUrl === 'function') {
-        const url = window.getCsvUrl();
-        console.log(`[DEBUG] getCsvUrlSafe usando window.getCsvUrl (fallback): ${url.substring(0, 60)}...`);
-        return url;
-    }
-    console.error("[DEBUG] ERROR: CSV_URL no está definida globalmente ni en config.");
+    // Prioridad a la variable global dinámica (controlada por index.html/pestañas)
+    if (typeof window.CSV_URL !== 'undefined') return window.CSV_URL;
+    if (typeof window.getCsvUrl === 'function') return window.getCsvUrl();
     return '';
 }
 
@@ -111,15 +94,12 @@ function extraerJSON(texto) {
 }
 
 async function cargar() {
-    console.log("[DEBUG] Iniciando función cargar()...");
+    console.log("[Editor] Cargando datos...");
     try {
         const url = getCsvUrlSafe();
-        if (!url) {
-            console.error("[DEBUG] cargar() abortado: URL vacía.");
-            return;
-        }
+        if (!url) return;
         
-        console.log(`[DEBUG] Fetching URL: ${url.substring(0, 80)}...`);
+        console.log("[Editor] URL Objetivo: " + url.substring(0, 50) + "...");
         
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
@@ -128,15 +108,11 @@ async function cargar() {
         const resp = await fetch(url + '&t=' + Date.now());
         const text = await resp.text();
         
-        console.log(`[DEBUG] Texto recibido. Longitud: ${text.length}`);
-        
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
         
-        console.log(`[DEBUG] Filas a procesar: ${filas.length}`);
-        
         filas.forEach((f, i) => {
-            if (i === 0) return; // Saltar cabecera
+            if (i === 0) return; 
             const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             const id = parseInt(c[0]);
             
@@ -150,7 +126,6 @@ async function cargar() {
                     alergenos: superLimpiar(c[6])
                 };
                 
-                // MODIFICADO: Bucle dinámico basado en IDIOMAS_CSV_INDICES para evitar mapeos manuales
                 if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
                     window.IDIOMAS_ORDEN.forEach(lang => {
                         const index = window.IDIOMAS_CSV_INDICES[lang];
@@ -158,19 +133,15 @@ async function cargar() {
                             item[lang] = superLimpiar(c[index]);
                         }
                     });
-                } else {
-                    console.warn("[DEBUG] IDIOMAS_ORDEN o IDIOMAS_CSV_INDICES no definidos. No se mapearán idiomas.");
                 }
-                
                 datosLocales.push(item);
             }
         });
         
-        console.log(`[DEBUG] datosLocales poblado con ${datosLocales.length} elementos.`);
+        console.log(`[Editor] ${datosLocales.length} platos cargados.`);
         
-        // NUEVO: Exponer datosLocales a window para que otros scripts (index.html, sugerencias) puedan verlos
+        // Exponer a window para otros scripts
         window.datosLocales = datosLocales;
-        console.log("[DEBUG] window.datosLocales sincronizado.");
 
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
@@ -178,10 +149,14 @@ async function cargar() {
             statusCarga.className = "status-ok";
         }
         
+        // NUEVO: Al cargar nuevos datos desde CSV, los cambios pendientes locales se descartan/resetean
+        window.hayCambiosSinGuardar = false;
+        console.log("[Editor] Cambios sin guardar reseteados (datos cargados desde servidor).");
+        
         renderizar();
-        generarMenuAgrupado(); // NUEVO: Generar menú para crear platos
+        generarMenuAgrupado(); 
     } catch (e) { 
-        console.error("[DEBUG] Error en cargar():", e);
+        console.error("[Editor] Error cargando:", e);
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
             statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
@@ -191,15 +166,10 @@ async function cargar() {
 }
 
 function renderizar() {
-    console.log("[DEBUG] renderizar() llamado.");
     let h = "";
     datosLocales.sort((a, b) => a.id - b.id);
     
-    // Validación de existencia de ESTRUCTURA
-    if (!window.ESTRUCTURA) {
-        console.error("[DEBUG] ERROR CRÍTICO: window.ESTRUCTURA no está definido. languages.js no cargó.");
-        return;
-    }
+    if (!window.ESTRUCTURA) return;
 
     ESTRUCTURA.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
@@ -236,16 +206,10 @@ function renderizar() {
     });
     
     const editorDinamico = document.getElementById('editor-dinamico');
-    if(editorDinamico) {
-        editorDinamico.innerHTML = h;
-        console.log("[DEBUG] renderizar() finalizado. HTML inyectado.");
-    } else {
-        console.error("[DEBUG] ERROR: No se encontró #editor-dinamico");
-    }
+    if(editorDinamico) editorDinamico.innerHTML = h;
 }
 
 function moverPlato(id, direccion) {
-    console.log(`[DEBUG] moverPlato(${id}, ${direccion})`);
     const idx = datosLocales.findIndex(x => x.id === id);
     if (direccion === 'subir' && idx > 0) {
         const temp = datosLocales[idx].id;
@@ -256,17 +220,14 @@ function moverPlato(id, direccion) {
         datosLocales[idx].id = datosLocales[idx+1].id;
         datosLocales[idx+1].id = temp;
     }
+    // NUEVO: Marcar cambios
+    window.hayCambiosSinGuardar = true;
     renderizar();
 }
 
 function abrirEditor(id, esNuevo = false) {
-    console.log(`[DEBUG] abrirEditor(${id}, ${esNuevo})`);
-    
     let p = esNuevo ? datosTempNuevo : datosLocales.find(x => x.id === id);
-    if (!p) {
-        console.error(`[DEBUG] ERROR: Plato con ID ${id} no encontrado en memoria.`);
-        return; 
-    }
+    if (!p) return; 
     
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
@@ -297,7 +258,6 @@ function abrirEditor(id, esNuevo = false) {
         inputEnUvas.style.display = esVino ? "block" : "none";
     }
     
-    // Renderizado dinámico de idiomas adicionales
     const containerResto = document.getElementById('contenedor-resto-idiomas');
     if (containerResto && window.IDIOMAS_ORDEN) {
         let htmlRestoLangs = `<div class="langs-fluid-container">`;
@@ -386,12 +346,7 @@ function abrirEditor(id, esNuevo = false) {
     
     comprobarRequisitosTraduccion();
     const modalEditor = document.getElementById('modal-editor');
-    if (modalEditor) {
-        modalEditor.style.display = 'block';
-        console.log("[DEBUG] Modal editor abierto.");
-    } else {
-        console.error("[DEBUG] ERROR: Modal editor no encontrado.");
-    }
+    if (modalEditor) modalEditor.style.display = 'block';
 }
 
 function actualizarNombreCroquetas() {
@@ -428,7 +383,6 @@ function comprobarRequisitosTraduccion() {
 }
 
 async function generarTraduccionEN() {
-    console.log("[DEBUG] generarTraduccionEN() llamado.");
     const nombreEs = document.getElementById('edit-es').value.trim();
     const esVino = (platoEditandoId >= 13000);
     const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
@@ -438,17 +392,15 @@ async function generarTraduccionEN() {
         return;
     }
 
-    // NUEVO: Función auxiliar para obtener keys (importada desde ui.js o state)
     let keys = [];
     if (typeof getKeys === 'function') {
         keys = getKeys();
     } else if (window.UI && typeof window.UI.getKeysList === 'function') {
-        // Fallback por si la estructura de UI cambia
         keys = window.UI.getKeysList();
     }
 
     if (keys.length === 0) {
-        alert("❌ No hay API Keys de Gemini configuradas. Añade al menos una en el panel superior.");
+        alert("❌ No hay API Keys de Gemini configuradas.");
         return;
     }
 
@@ -589,7 +541,6 @@ function cerrarModalTraduccionEN() {
 }
 
 async function ejecutarTraduccionAutomatica() {
-    console.log("[DEBUG] ejecutarTraduccionAutomatica() llamado.");
     const btn = document.getElementById('btn-autotraducir');
     if (!btn) return;
     
@@ -603,7 +554,6 @@ async function ejecutarTraduccionAutomatica() {
     const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
     const uvasEn = esVino ? document.getElementById('edit-en-uvas').value.trim() : "";
     
-    // NUEVO: Obtener keys de forma segura
     let keys = [];
     if (typeof getKeys === 'function') {
         keys = getKeys();
@@ -612,7 +562,7 @@ async function ejecutarTraduccionAutomatica() {
     }
     
     if (keys.length === 0) {
-        alert("❌ No hay API Keys de Gemini configuradas. Añade al menos una en el panel superior.");
+        alert("❌ No hay API Keys de Gemini configuradas.");
         btn.innerText = originalText;
         btn.disabled = false;
         return;
@@ -696,13 +646,11 @@ async function ejecutarTraduccionAutomatica() {
 }
 
 function aplicarCambiosPlato() {
-    console.log("[DEBUG] aplicarCambiosPlato() llamado.");
     let p = esNuevoPlato ? datosTempNuevo : datosLocales.find(x => x.id === platoEditandoId);
     if (!p) return;
     
     if (esNuevoPlato) {
         datosLocales.push(p);
-        console.log("[DEBUG] Nuevo plato añadido a datosLocales.");
     }
     
     const esVino = (platoEditandoId >= 13000);
@@ -732,17 +680,15 @@ function aplicarCambiosPlato() {
         return spaceIdx !== -1 ? rawText.substring(spaceIdx + 1).trim() : rawText;
     }).join(', ');
     
+    // NUEVO: Marcar que hay cambios sin guardar
+    window.hayCambiosSinGuardar = true;
+    
     cerrarModal('modal-editor');
     renderizar();
-    console.log("[DEBUG] Cambios aplicados y renderizado actualizado.");
 }
 
 function generarMenuAgrupado() {
-    console.log("[DEBUG] generarMenuAgrupado() llamado.");
-    if (!window.ESTRUCTURA) {
-        console.error("[DEBUG] ERROR: ESTRUCTURA no definida. No se puede generar el menú de agrupados.");
-        return;
-    }
+    if (!window.ESTRUCTURA) return;
     
     let h = "";
     ESTRUCTURA.forEach(cat => {
@@ -757,20 +703,11 @@ function generarMenuAgrupado() {
         h += `</div>`;
     });
     const listaAgrupada = document.getElementById('lista-agrupada');
-    if (listaAgrupada) {
-        listaAgrupada.innerHTML = h;
-        console.log("[DEBUG] Menú de agrupados generado e inyectado.");
-    } else {
-        console.error("[DEBUG] ERROR: No se encontró #lista-agrupada");
-    }
+    if (listaAgrupada) listaAgrupada.innerHTML = h;
 }
 
 function prepararNuevoPlato(baseId, folder) {
-    console.log(`[DEBUG] prepararNuevoPlato(${baseId}, '${folder}')`);
-    if (!window.ESTRUCTURA) {
-        console.error("[DEBUG] ERROR: No se puede preparar nuevo plato sin ESTRUCTURA.");
-        return;
-    }
+    if (!window.ESTRUCTURA) return;
 
     let maxPermitido = baseId + 99;
     ESTRUCTURA.forEach(cat => {
@@ -783,8 +720,6 @@ function prepararNuevoPlato(baseId, folder) {
     const similares = datosLocales.filter(p => p.id >= baseId && p.id <= maxPermitido);
     const nuevoId = similares.length > 0 ? Math.max(...similares.map(p => p.id)) + 1 : baseId;
     
-    console.log(`[DEBUG] Calculando nuevo ID... Max permitido: ${maxPermitido}. Siguientes: ${similares.map(p=>p.id)}. Nuevo ID: ${nuevoId}`);
-
     if (nuevoId > maxPermitido) {
         alert("Límite de IDs alcanzado para esta subcategoría específica.");
         return;
@@ -810,7 +745,9 @@ function prepararNuevoPlato(baseId, folder) {
     }
     datosTempNuevo['es'] = "NUEVO ELEMENTO";
 
-    console.log("[DEBUG] Objeto temporal creado:", datosTempNuevo);
+    // Nota: Al aceptar cambios se marcará como dirty. Al crear solo se prepara, no se guarda hasta aceptar.
+    // Pero si añadimos el array, técnicamente es un cambio en memoria.
+    // Dejaremos que `aplicarCambiosPlato` maneje el flag al final.
 
     cerrarModal('modal-selector');
     abrirEditor(nuevoId, true);
@@ -821,16 +758,14 @@ async function enviarAlExcel() {
     if (!btn) return;
     
     const textoOriginal = btn.innerText;
-    btn.innerText = "⏳ SUBIENDO Y ORDENANDO COLUMNAS..."; 
+    btn.innerText = "⏳ ENVIANDO..."; 
     btn.disabled = true;
     
-    if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-        UI.log('[Editor] Compilando matriz y enviando cambios distribuidos a Google Sheets...');
-    }
+    // NUEVO: Actualizar texto del botón y resetear flag de cambios
+    console.log("[Editor] Guardando cambios...");
     
     datosLocales.sort((a, b) => a.id - b.id);
     
-    // MODIFICADO: Bucle dinámico para evitar mapeos manuales en el payload
     const payload = datosLocales.map(p => {
         let obj = {
             id: p.id, 
@@ -851,9 +786,7 @@ async function enviarAlExcel() {
     try {
         const urlDestino = getWebAppUrlSafe();
         
-        console.log(`[Editor-Debug] Enviando a URL: ${urlDestino}`);
-        console.log(`[Editor-Debug] Tamaño del payload: ${(new Blob([JSON.stringify(payload)])).size / 1024} KB`);
-        console.log(`[Editor-Debug] Muestra del primer elemento del payload:`, payload[0]);
+        console.log(`[Editor] Enviando a URL: ${urlDestino}`);
         
         const response = await fetch(urlDestino, { 
             method: 'POST', 
@@ -862,17 +795,18 @@ async function enviarAlExcel() {
             body: JSON.stringify(payload) 
         });
         
-        console.log(`[Editor-Debug] Fetch finalizado. Tipo de respuesta: ${response.type}, Status: ${response.status}`);
-        
         if (response.type === 'opaque') {
-            console.warn("[Editor-Debug] Modo 'no-cors' activo: El navegador ha ocultado la respuesta del servidor. Verifica tu Google Sheet manualmente.");
+            console.warn("[Editor] Modo 'no-cors' activo: No se puede confirmar la respuesta del servidor.");
         }
         
-        alert("✅ Petición de guardado enviada. (Nota: En modo no-cors no podemos confirmar el éxito total, revisa el Excel).");
+        alert("✅ Petición enviada. Revisa el Google Sheet para confirmar.");
+        
+        // NUEVO: Resetear flag y recargar página
+        window.hayCambiosSinGuardar = false;
         location.reload();
     } catch (e) { 
-        alert("Error al intentar impactar los datos en Google Sheets."); 
-        console.error("❌ [Editor-Debug] Error de red: ", e);
+        alert("Error al intentar impactar los datos.");
+        console.error("[Editor] Error de red: ", e);
         btn.disabled = false; 
         btn.innerText = textoOriginal; 
     }
@@ -880,18 +814,15 @@ async function enviarAlExcel() {
 
 function toggleActivo(id, v) { 
     const p = datosLocales.find(x => x.id === id);
-    if(p) p.activa = v; 
+    if(p) {
+        p.activa = v; 
+        window.hayCambiosSinGuardar = true; // NUEVO
+    }
 }
 
 function abrirSelector() { 
-    console.log("[DEBUG] abrirSelector() llamado.");
     const modal = document.getElementById('modal-selector');
-    if (modal) {
-        modal.style.display = 'block';
-        console.log("[DEBUG] Modal selector abierto.");
-    } else {
-        console.error("[DEBUG] ERROR: Modal selector no encontrado.");
-    }
+    if (modal) modal.style.display = 'block';
 }
 
 function cerrarModal(id) { 
@@ -952,7 +883,6 @@ function eliminarKeySeleccionada() {
 }
 
 // Inicialización automática al cargar la página
-console.log("[DEBUG] Iniciando carga inicial...");
 cargar();
 actualizarListaKeys();
 
