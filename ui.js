@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.12-CDN-RETRY-LOGIC'; 
+window.APP_VERSIONS.ui = '1.0.13-BRUTE-FORCE-RETRY'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -159,12 +159,17 @@ export const UI = {
 
     // MODIFICADO: Ahora acepta una URL explícita para evitar confusión con múltiples inputs
     cargarGoogleSheets: async (targetUrl, retryCount = 0) => {
-        const MAX_RETRIES = 3;
+        const DANGER_WINDOW_MS = 15000;
+        const MAX_RETRIES = 5;
+        
         if (!targetUrl) return UI.log("[Error] No se proporcionó una URL válida.");
         
+        const timeSinceSave = Date.now() - window.lastSaveAttempt;
+        const isDangerZone = timeSinceSave < DANGER_WINDOW_MS;
+
         UI.log(`[Info] Descargando CSV desde Google Sheets (${targetUrl.substring(0, 40)}...)...`);
         try {
-            // MODIFICADO: Se usa parámetro 'zx' y cabeceras forzadas
+            // MODIFICADO: Parámetro 'zx' y cabeceras forzadas
             const resp = await fetch(targetUrl + '&zx=' + Date.now(), { 
                 cache: "no-store",
                 headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
@@ -172,14 +177,11 @@ export const UI = {
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
             
-            // NUEVO: Verificación de estancamiento de CDN
-            const lastModifiedHeader = resp.headers.get('Last-Modified');
-            const isStale = window.lastSaveAttempt > 0 && lastModifiedHeader && (new Date(lastModifiedHeader).getTime() < window.lastSaveAttempt);
-            
-            if (isStale && retryCount < MAX_RETRIES) {
-                console.warn(`[UI] ⚠️ CDN Stale Detectado. Reintentando...`);
-                UI.log(`[Warning] Datos antiguos detectados en Pro Panel. Reintentando (${retryCount + 1}/${MAX_RETRIES})...`);
-                await new Promise(r => setTimeout(r, 500));
+            // NUEVO: Lógica "Brute Force" para CDN
+            if (isDangerZone && retryCount < MAX_RETRIES) {
+                console.warn(`[UI] ⚠️ Zona de Peligro. Reintento automático #${retryCount + 1}...`);
+                UI.log(`[Info] Verificando datos post-guardado (Intento ${retryCount + 1}/${MAX_RETRIES})...`);
+                await new Promise(r => setTimeout(r, 300));
                 return UI.cargarGoogleSheets(targetUrl, retryCount + 1);
             }
 
