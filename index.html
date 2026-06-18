@@ -57,14 +57,33 @@
                     <div class="space-y-1.5">
                         <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">1. Orígenes de Datos</h3>
                         
+                        <!-- Carga Web RG -->
+                        <div class="grid grid-cols-1 gap-1 text-sm mb-2">
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB RG:</label>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <input type="text" id="sheetsUrlRG" value="" placeholder="URL CSV RG (Google Sheets)..." class="flex-1 text-xs py-1 px-2">
+                                <button id="loadSheetsBtnRG" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web RG</button>
+                            </div>
+                        </div>
+
+                        <!-- Carga Web USOpen -->
+                        <div class="grid grid-cols-1 gap-1 text-sm mb-2">
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB USOPEN:</label>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <input type="text" id="sheetsUrlUSOpen" value="" placeholder="URL CSV USOpen (Google Sheets)..." class="flex-1 text-xs py-1 px-2">
+                                <button id="loadSheetsBtnUSOpen" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web USOpen</button>
+                            </div>
+                        </div>
+
+                        <!-- Carga Local -->
                         <div class="grid grid-cols-1 gap-1 text-sm">
                             <div class="flex gap-2 items-center">
                                 <label class="text-xs whitespace-nowrap">CSV Local:</label>
                                 <input type="file" id="archivoLocal" accept=".csv" class="text-xs flex-1 p-0.5">
-                            </div>
-                            <div class="flex gap-1.5">
-                                <input type="text" id="sheetsUrl" value="" placeholder="URL CSV de Google Sheets..." class="flex-1 text-xs py-1 px-2">
-                                <button id="loadSheetsBtn" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web</button>
                             </div>
                         </div>
                     </div>
@@ -305,9 +324,11 @@
             console.log(`[Editor] Contexto de datos establecido a: ${dataContext} (window.currentMode: ${window.currentMode})`);
 
             // Actualizamos el input visual de la pestaña Pro para consistencia (usando las funciones globales de config.js)
-            const sheetsInput = document.getElementById('sheetsUrl');
+            const sheetsInput = document.getElementById('sheetsUrl'); // Nota: En el nuevo HTML hay sheetsUrlRG y sheetsUrlUSOpen
+            // Solo actualizamos si estamos en un contexto genérico o si no existe el específico para evitar machacar lo que el usuario esté escribiendo en Pro
             if (sheetsInput && window.getCsvUrl) {
-                sheetsInput.value = window.getCsvUrl();
+                // Solo actualizamos si el input está vacío o corresponde al modo actual
+                if(!sheetsInput.value) sheetsInput.value = window.getCsvUrl();
             }
 
             // NUEVO: Actualizar botón de guardar inmediatamente basado en el nuevo modo
