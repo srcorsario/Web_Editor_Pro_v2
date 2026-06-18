@@ -89,18 +89,9 @@
         const MAX_INTENTOS = 10;
 
         function intentarRenderizado() {
-            let fuente = [];
-            const backup = localStorage.getItem('csvData');
-            
-            if (backup) {
-                try {
-                    fuente = JSON.parse(backup);
-                } catch(e) {
-                    fuente = window.datosLocales || [];
-                }
-            } else {
-                fuente = window.datosLocales || [];
-            }
+            // MODIFICADO: Eliminamos lectura de localStorage para asegurar datos frescos.
+            // Forzamos el uso de window.datosLocales que se actualiza al cambiar pestaña.
+            let fuente = window.datosLocales || [];
 
             const tieneDatosEnRango = fuente.some(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
             
