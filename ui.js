@@ -2,7 +2,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.8'; // Incrementado por consolidación de dependencias
+window.APP_VERSIONS.ui = '1.0.9'; // MODIFICADO: Actualizado por cambios en Pro Panel
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -15,7 +15,8 @@ let activeLang = 'EN';
 
 const stateContainer = {
     headers: [],
-    csvData: []
+    csvData: [],
+    currentProMode: 'RG' // NUEVO: Estado local para la pestaña Pro (RG o USOPEN)
 };
 
 export const UI = {
@@ -157,14 +158,13 @@ export const UI = {
         }).join('');
     },
 
-    cargarGoogleSheets: async () => {
-        const urlInput = document.getElementById('sheetsUrl');
-        const url = urlInput ? urlInput.value.trim() : '';
-        if (!url) return UI.log("[Error] Introduce una URL válida de Google Sheets.");
+    // MODIFICADO: Ahora acepta una URL explícita para evitar confusión con múltiples inputs
+    cargarGoogleSheets: async (targetUrl) => {
+        if (!targetUrl) return UI.log("[Error] No se proporcionó una URL válida.");
         
-        UI.log("[Info] Descargando CSV desde Google Sheets...");
+        UI.log(`[Info] Descargando CSV desde Google Sheets (${targetUrl.substring(0, 40)}...)...`);
         try {
-            const resp = await fetch(url + '&t=' + Date.now());
+            const resp = await fetch(targetUrl + '&t=' + Date.now());
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
             
@@ -176,6 +176,10 @@ export const UI = {
                             stateContainer.headers = resultado.data[0];
                             stateContainer.csvData = resultado.data.slice(1);
                             UI.log(`[OK] CSV de Google Sheets cargado. Filas: ${stateContainer.csvData.length}, Columnas: ${stateContainer.headers.length}`);
+                            
+                            // NUEVO: Actualizar el texto del botón de sincronización
+                            UI.actualizarTextoBotonSync();
+                            
                             UI.renderTable();
                         }
                     }
@@ -186,6 +190,10 @@ export const UI = {
                     stateContainer.headers = lineas[0].split(",").map(h => h.replace(/^"|"$/g, '').trim());
                     stateContainer.csvData = lineas.slice(1).map(f => f.split(",").map(v => v.replace(/^"|"$/g, '').trim()));
                     UI.log(`[OK] CSV cargado (Fallback). Filas: ${stateContainer.csvData.length}`);
+                    
+                    // NUEVO: Actualizar el texto del botón de sincronización
+                    UI.actualizarTextoBotonSync();
+                    
                     UI.renderTable();
                 }
             }
@@ -194,10 +202,29 @@ export const UI = {
         }
     },
 
+    // NUEVO: Función auxiliar para actualizar el texto del botón de sincronización
+    actualizarTextoBotonSync: () => {
+        const btn = document.getElementById('btnSyncSheets');
+        if (!btn) return;
+        
+        const contexto = stateContainer.currentProMode;
+        if (contexto === 'USOPEN') {
+            btn.innerText = "☁️ Sincronizar con Google Sheet USOPEN";
+        } else {
+            btn.innerText = "☁️ Sincronizar con Google Sheet RG";
+        }
+    },
+
     sincronizarConGoogleSheets: async () => {
         if (stateContainer.headers.length === 0 || stateContainer.csvData.length === 0) {
             return UI.log("[Error] No hay datos en memoria para sincronizar. Carga un archivo primero.");
         }
+
+        // NUEVO: Usar currentProMode para determinar destino
+        const modo = stateContainer.currentProMode;
+        const contextoNombre = modo === 'USOPEN' ? 'USOPEN' : 'RG';
+        
+        UI.log(`[Sincro] Preparando envío a: ${contextoNombre}...`);
 
         UI.log("[Sincro] Analizando cabeceras reales de la hoja para mapeo seguro...");
         
@@ -261,7 +288,7 @@ export const UI = {
             return UI.log("[Error] La compilación no generó filas válidas. Verifica que la columna 'ID' exista y sea correcta.");
         }
 
-        UI.log(`[Sincro] Enviando ${payload.length} filas completas y preservando datos originales al servidor...`);
+        UI.log(`[Sincro] Enviando ${payload.length} filas completas y preservando datos originales al servidor (${contextoNombre})...`);
         
         const jsonPayload = JSON.stringify(payload);
         UI.log(`[Sincro-Debug] Tamaño del payload serializado: ${(new Blob([jsonPayload])).size / 1024} KB`);
@@ -270,8 +297,19 @@ export const UI = {
         }
 
         try {
-            // MODIFICADO: Uso de window.getWebAppUrl para acceder a la configuración global
-            const urlDestino = window.getWebAppUrl ? window.getWebAppUrl() : 'https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec';
+            // NUEVO: Determinar URL basada en currentProMode
+            let urlDestino = '';
+            // MODIFICADO: Forzamos el uso de config.js basado en nuestro estado local
+            if (stateContainer.currentProMode === 'USOPEN') {
+                 // Hack temporal para asegurar que config.js devuelva la correcta
+                 const originalMode = window.currentMode;
+                 window.currentMode = 'USOPEN';
+                 urlDestino = window.getWebAppUrl ? window.getWebAppUrl() : 'https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec';
+                 window.currentMode = originalMode; // Restaurar
+            } else {
+                 urlDestino = window.getWebAppUrl ? window.getWebAppUrl() : 'https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec';
+            }
+
             
             UI.log(`[Sincro-Debug] URL de destino: ${urlDestino}`);
             
@@ -285,13 +323,13 @@ export const UI = {
             UI.log(`[Sincro-Debug] Fetch finalizado. Tipo de respuesta: ${response.type}, Status: ${response.status}`);
             
             if (response.type === 'opaque') {
-                UI.log("⚠️ [Sincro-Debug] Modo 'no-cors' activo: El navegador ha ocultado la respuesta del servidor por políticas CORS. No podemos leer si hubo un error interno en Google Apps Script.");
-                UI.log("✅ [Sincro] Petición de sincronización enviada. Verifica tu Google Sheet manualmente para confirmar que los datos llegaron correctamente.");
+                UI.log("⚠️ [Sincro-Debug] Modo 'no-cors' activo: El navegador ha ocultado la respuesta del servidor por políticas CORS. No se puede leer si hubo un error interno en Google Apps Script.");
+                UI.log(`✅ [Sincro] Petición de sincronización enviada a ${contextoNombre}. Verifica tu Google Sheet manualmente para confirmar que los datos llegaron correctamente.`);
             } else {
-                UI.log("✅ [Sincro] ¡Éxito! Sincronización completada sin pérdidas de datos.");
+                UI.log(`✅ [Sincro] ¡Éxito! Sincronización completada hacia ${contextoNombre} sin pérdidas de datos.`);
             }
         } catch (e) { 
-            UI.log("❌ [Sincro] Error de red al intentar impactar los datos en Google Sheets: " + e.message); 
+            UI.log(`❌ [Sincro] Error de red al intentar impactar los datos en Google Sheets (${contextoNombre}): ` + e.message); 
         }
     },
 
@@ -320,27 +358,85 @@ export const UI = {
             };
         }
 
+        // MODIFICADO: Lógica para inputs de URL de Google Sheets (RG y USOpen)
+        const loadSheetsBtnRG = document.getElementById('loadSheetsBtnRG');
+        const inputRG = document.getElementById('sheetsUrlRG');
+        
+        if (loadSheetsBtnRG && inputRG) {
+            // Rellenar valor inicial si está vacío
+            if (!inputRG.value && window.CSV_URL_RG) inputRG.value = window.CSV_URL_RG;
+
+            loadSheetsBtnRG.onclick = () => {
+                const url = inputRG.value.trim();
+                if (url) {
+                    // NUEVO: Establecer modo y cargar
+                    stateContainer.currentProMode = 'RG';
+                    // Sincronizar globalmente para que config.js funcione
+                    window.currentMode = 'RG';
+                    
+                    UI.cargarGoogleSheets(url);
+                } else {
+                    UI.log("[Error] La URL para RG está vacía.");
+                }
+            };
+        }
+
+        const loadSheetsBtnUSOpen = document.getElementById('loadSheetsBtnUSOpen');
+        const inputUSOpen = document.getElementById('sheetsUrlUSOpen');
+
+        if (loadSheetsBtnUSOpen && inputUSOpen) {
+            // Rellenar valor inicial si está vacío
+            if (!inputUSOpen.value && window.CSV_URL_USOPEN) inputUSOpen.value = window.CSV_URL_USOPEN;
+
+            loadSheetsBtnUSOpen.onclick = () => {
+                const url = inputUSOpen.value.trim();
+                if (url) {
+                    // NUEVO: Establecer modo y cargar
+                    stateContainer.currentProMode = 'USOPEN';
+                    // Sincronizar globalmente
+                    window.currentMode = 'USOPEN';
+                    
+                    UI.cargarGoogleSheets(url);
+                } else {
+                    UI.log("[Error] La URL para USOpen está vacía.");
+                }
+            };
+        }
+
+        // MODIFICADO: Lógica para importar CSV local con pregunta de destino
         const inputImportar = document.getElementById('archivoLocal');
         if (inputImportar) {
             inputImportar.onchange = (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    UI.importarCSV(file, (headers, data) => {
-                        stateContainer.headers = headers;
-                        stateContainer.csvData = data;
-                        UI.log(`[OK] Archivo cargado en memoria externa. Filas procesadas: ${data.length}`);
-                        if (typeof UI.renderTable === 'function') {
-                            UI.renderTable();
-                        }
-                    });
+                    // NUEVO: Preguntar destino
+                    const destino = prompt("¿Dónde quieres subir estos datos?\nEscribe 'RG' para Roland Garros o 'USOPEN' para US Open:", "RG");
+                    
+                    if (destino && (destino.toUpperCase() === 'RG' || destino.toUpperCase() === 'USOPEN')) {
+                        const modoDefinitivo = destino.toUpperCase();
+                        stateContainer.currentProMode = modoDefinitivo;
+                        window.currentMode = modoDefinitivo;
+                        
+                        UI.log(`[Import] Archivo local seleccionado. Destino asignado: ${modoDefinitivo}`);
+                        
+                        UI.importarCSV(file, (headers, data) => {
+                            stateContainer.headers = headers;
+                            stateContainer.csvData = data;
+                            UI.log(`[OK] Archivo cargado en memoria externa. Filas procesadas: ${data.length}`);
+                            
+                            // NUEVO: Actualizar botón sync
+                            UI.actualizarTextoBotonSync();
+                            
+                            if (typeof UI.renderTable === 'function') {
+                                UI.renderTable();
+                            }
+                        });
+                    } else {
+                        UI.log("[Cancel] Importación cancelada o destino no válido.");
+                        // Limpiar input para permitir re-seleccionar el mismo archivo si se desea
+                        inputImportar.value = '';
+                    }
                 }
-            };
-        }
-
-        const loadSheetsBtn = document.getElementById('loadSheetsBtn');
-        if (loadSheetsBtn) {
-            loadSheetsBtn.onclick = () => {
-                UI.cargarGoogleSheets();
             };
         }
 
@@ -439,9 +535,8 @@ export const UI = {
         const selectorInicio = document.getElementById('rangoInicio');
         const selectorFin = document.getElementById('rangoFin');
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
-
 // [🔒 FIN DE PARTE 1. CONTINÚA EN LA SIGUIENTE PARTE]
-    // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
+        // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
         const ENDPOINT_GATEWAY = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
