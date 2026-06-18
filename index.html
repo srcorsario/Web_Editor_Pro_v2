@@ -9,12 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    
-    <!-- Configuración Inicial (Por defecto Roland Garros) -->
-    <script>
-        let CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv";
-        let WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec";
-    </script>
+    <!-- ELIMINADO: Script de configuración redundante en <head> para evitar conflictos con config.js -->
 </head>
 <body>
 
@@ -226,39 +221,20 @@
     <script>
         console.log("%c[Editor] Inicializando configuración de URLs...", "color: blue; font-weight: bold;");
 
-        // Configuración de URLs para cada restaurante
-        const URLS_RG = {
-            csv: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv",
-            script: "https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec"
-        };
-
-        const URLS_USOPEN = {
-            csv: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?gid=0&single=true&output=csv",
-            script: "https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec"
-        };
-
-        // NUEVO: Lógica mejorada para texto del botón basada en el botón activo visualmente
+        // NUEVO: Función unificada para actualizar la etiqueta del botón basada en el modo global
         function actualizarTextoBotonGuardar() {
             const btn = document.getElementById('btn-guardar-dinamico');
             if (!btn) return;
 
-            // Detectar restaurante por la pestaña activa visualmente
-            const tabActivo = document.querySelector('.tab-btn.active');
-            const tabActivoText = tabActivo ? tabActivo.innerText : "";
+            // Usamos window.currentMode que es la fuente de verdad establecida en switchTab
+            // Si no está definido (primera carga antes de switch), asumimos RG por defecto
+            const modo = window.currentMode || 'RG';
             
-            let contexto = "RG";
-            
-            // Si el botón activo es "5. Editor Carta USOpen", contexto es USOPEN
-            if (tabActivoText.includes("USOPEN")) {
-                contexto = "USOPEN";
-            }
-            
-            // Actualizar texto
-            btn.innerText = `GUARDAR CAMBIOS EN WEB ${contexto.toUpperCase()}`;
-            console.log(`[Editor] Botón actualizado a contexto: ${contexto} (Detectado por Pestaña Activa)`);
+            btn.innerText = `GUARDAR CAMBIOS EN WEB ${modo}`;
+            console.log(`[Editor] Botón actualizado a contexto: ${modo}`);
         }
 
-        // Lógica nativa de Pestañas (Tabs) con cambio de contexto de datos
+        // Lógica nativa de Pestañas (Tabs) con cambio de contexto de datos centralizado
         async function switchTab(tabId, btnElement) {
             console.log(`[Editor] Cambiando a pestaña: ${tabId}`);
             
@@ -309,25 +285,28 @@
             }
 
             // 4. Enrutamiento de Datos (Cambio de Restaurante)
-            let targetUrls = URLS_RG; // Por defecto RG para Editor y Pro
+            // MODIFICADO: Establecemos window.currentMode como fuente de verdad unificada
             let dataContext = "RG";
 
             if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
-                targetUrls = URLS_USOPEN;
+                window.currentMode = 'USOPEN';
                 dataContext = "USOPEN";
+            } else {
+                // Para cualquier otra pestaña (Editor RG, Sugerencias RG, Pro), asumimos RG
+                // Nota: 'Pro' es genérico, pero por defecto operará sobre RG a menos que se añada lógica específica.
+                window.currentMode = 'RG';
+                dataContext = "RG";
             }
 
-            console.log(`[Editor] Contexto de datos establecido a: ${dataContext}`);
+            console.log(`[Editor] Contexto de datos establecido a: ${dataContext} (window.currentMode: ${window.currentMode})`);
 
-            // Actualizamos las variables globales que usa app.js
-            window.CSV_URL = targetUrls.csv;
-            window.WEB_APP_URL = targetUrls.script;
-
-            // Actualizamos el input visual de la pestaña Pro para consistencia
+            // Actualizamos el input visual de la pestaña Pro para consistencia (usando las funciones globales de config.js)
             const sheetsInput = document.getElementById('sheetsUrl');
-            if (sheetsInput) sheetsInput.value = targetUrls.csv;
+            if (sheetsInput && window.getCsvUrl) {
+                sheetsInput.value = window.getCsvUrl();
+            }
 
-            // NUEVO: Actualizar botón de guardar inmediatamente basado en pestaña activa visual
+            // NUEVO: Actualizar botón de guardar inmediatamente basado en el nuevo modo
             actualizarTextoBotonGuardar();
 
             // 5. Recarga de Datos Obligatoria
@@ -349,16 +328,15 @@
                 if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
             }
             
-            // NUEVO: Asegurar que al terminar, el texto esté correcto.
-            // Esto asegura que si `cargar` se ejecutó (y resete la variable), sobreescribimos el texto del botón basado en el ID seleccionado
-            actualizarTextoBotonGuardar('document.querySelector(".tab-btn.active"));
+            // Asegurar que al terminar, el texto del botón esté correcto
+            actualizarTextoBotonGuardar();
         }
 
-        // NUEVO: Al final de todo, asegurar sincronización visual
-        // Esto corrige el caso donde la URL es RG por defecto pero estamos visualmente en USOpen visualmente por algún error de estado
-        setTimeout(() => {
-            actualizarTextoBotonGuardar('document.querySelector(".tab-btn.active"));
-        }, 100); // Pequeño retraso por seguridad
+        // Inicialización inicial: Asegurar que el modo por defecto sea RG si no se ha establecido
+        if (!window.currentMode) {
+            window.currentMode = 'RG';
+        }
+        actualizarTextoBotonGuardar();
     </script>
 </body>
 </html>
