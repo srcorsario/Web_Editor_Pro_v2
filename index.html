@@ -163,6 +163,25 @@
         </div>
     </div>
 
+    <!-- NUEVO: Modal para seleccionar destino de importación local -->
+    <div id="modal-seleccionar-destino" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px;">
+            <h3 style="margin-top:0; margin-bottom: 10px;">¿Destino de la Importación?</h3>
+            <p style="color: #666; margin-bottom: 25px;">Selecciona a qué restaurante deseas subir los datos del archivo seleccionado:</p>
+            
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button class="btn-modal-aceptar" onclick="UI.confirmarImportacion('RG')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">
+                    RG (Roland Garros)
+                </button>
+                <button class="btn-modal-aceptar" onclick="UI.confirmarImportacion('USOPEN')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">
+                    US Open
+                </button>
+            </div>
+            
+            <button class="btn-modal-cancelar" onclick="UI.cancelarImportacion()" style="margin-top: 25px;">Cancelar</button>
+        </div>
+    </div>
+
     <div id="modal-editor" class="modal">
         <div class="modal-content modal-full-layout">
             
