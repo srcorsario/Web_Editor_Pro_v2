@@ -109,7 +109,7 @@
                 <div class="max-h-[580px] overflow-y-auto">
                     <table class="w-full">
                         <thead id="tableHeadRow" class="sticky top-0 z-10"></thead>
-                        <tbody id="tablaBody" class="text-sm text-slate-300">
+                        <tbody id="tablaBody" class="text-sm text-selle-300">
                             <tr>
                                 <td colspan="4" class="text-center py-8 text-slate-500 italic">Ningún archivo cargado en el sistema. Selecciona un origen arriba.</td>
                             </tr>
@@ -260,13 +260,12 @@
             console.log(`[Editor] Cambiando a pestaña: ${tabId}`);
             
             // 1. PREVENCIÓN DE PÉRDIDA DE DATOS
-            // Verificar si estamos en un editor y si hay cambios sin guardar
             const esEditorActual = document.getElementById('tab-editor').style.display !== 'none' || document.getElementById('tab-editor').classList.contains('active');
             
             if (esEditorActual && window.hayCambiosSinGuardar) {
                 const confirmarGuardar = confirm("⚠️ Tienes cambios sin guardar en esta pestaña. ¿Quieres guardarlos antes de cambiar?");
                 if (confirmarGuardar) {
-                    // Ejecutar guardado. Note: enviarAlExcel normalmente recarga la página, así que no llegaremos al resto de la función.
+                    // Ejecutar guardado. Note: enviarAlExcel normalmente recarga la página.
                     await window.enviarAlExcel();
                     return; 
                 }
@@ -333,7 +332,7 @@
                 try {
                     await window.cargar();
                 } catch (e) {
-                    console.error("[Editor] Error cargando:", e);
+                    console.error("[Editor] Error cargando datos:", e);
                     alert("Error cargando datos: " + e.message);
                 }
             } else {
@@ -347,6 +346,9 @@
                 if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
             }
         }
+        
+        // NUEVO: Sincronizar botón al final del script para inicialización correcta
+        actualizarTextoBotonGuardar();
     </script>
 </body>
 </html>
