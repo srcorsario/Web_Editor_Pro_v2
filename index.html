@@ -54,7 +54,7 @@
             
             <div class="flex flex-col md:flex-row gap-4 mb-4">
                 
-                <div class="card md:w-3/10 flex-none flex flex-col justify-between h-[310px]" style="width: 30%; min-width: 340px;">
+                <div class="card md:w-3/10 flex-none flex flex-col justify-between h-[310px]" style="width: 30%; min-width:  330px;">
                     <div class="space-y-1.5">
                         <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">1. Orígenes de Datos</h3>
                         
@@ -237,22 +237,25 @@
             script: "https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec"
         };
 
-        // Función auxiliar para actualizar el texto del botón dinámico
+        // NUEVO: Lógica mejorada para texto del botón basada en el botón activo visualmente
         function actualizarTextoBotonGuardar() {
             const btn = document.getElementById('btn-guardar-dinamico');
             if (!btn) return;
 
-            const url = window.CSV_URL || "";
+            // Detectar restaurante por la pestaña activa visualmente
+            const tabActivo = document.querySelector('.tab-btn.active');
+            const tabActivoText = tabActivo ? tabActivo.innerText : "";
+            
             let contexto = "RG";
             
-            if (url.includes("USOPEN")) {
+            // Si el botón activo es "5. Editor Carta USOpen", contexto es USOPEN
+            if (tabActivoText.includes("USOPEN")) {
                 contexto = "USOPEN";
-            } else if (url.includes("2PACX-1vT9rPlxpax2l")) {
-                contexto = "RG";
             }
-
+            
+            // Actualizar texto
             btn.innerText = `GUARDAR CAMBIOS EN WEB ${contexto.toUpperCase()}`;
-            console.log(`[Editor] Botón actualizado a contexto: ${contexto}`);
+            console.log(`[Editor] Botón actualizado a contexto: ${contexto} (Detectado por Pestaña Activa)`);
         }
 
         // Lógica nativa de Pestañas (Tabs) con cambio de contexto de datos
@@ -287,7 +290,7 @@
             }
             
             const targetTab = document.getElementById('tab-' + targetTabId);
-            if(targetTab) {
+            if (targetTab) {
                 targetTab.classList.add('active');
                 targetTab.style.display = 'block';
             }
@@ -295,7 +298,7 @@
 
             // 3. Visibilidad de Botones Flotantes (Solo en Editor)
             const floatBtn = document.querySelector('.btn-add-float');
-            const saveBtn = document.querySelector('.btn-guardar-dinamico');
+            const saveBtn = document.getElementById('btn-guardar-dinamico');
             
             if (targetTabId === 'editor') {
                 if(floatBtn) floatBtn.style.display = 'block';
@@ -324,7 +327,7 @@
             const sheetsInput = document.getElementById('sheetsUrl');
             if (sheetsInput) sheetsInput.value = targetUrls.csv;
 
-            // NUEVO: Actualizar botón de guardar inmediatamente
+            // NUEVO: Actualizar botón de guardar inmediatamente basado en pestaña activa visual
             actualizarTextoBotonGuardar();
 
             // 5. Recarga de Datos Obligatoria
@@ -345,10 +348,17 @@
             } else if (tabId === 'sugerencias-usopen') {
                 if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
             }
+            
+            // NUEVO: Asegurar que al terminar, el texto esté correcto.
+            // Esto asegura que si `cargar` se ejecutó (y resete la variable), sobreescribimos el texto del botón basado en el ID seleccionado
+            actualizarTextoBotonGuardar('document.querySelector(".tab-btn.active"));
         }
-        
-        // NUEVO: Sincronizar botón al final del script para inicialización correcta
-        actualizarTextoBotonGuardar();
+
+        // NUEVO: Al final de todo, asegurar sincronización visual
+        // Esto corrige el caso donde la URL es RG por defecto pero estamos visualmente en USOpen visualmente por algún error de estado
+        setTimeout(() => {
+            actualizarTextoBotonGuardar('document.querySelector(".tab-btn.active"));
+        }, 100); // Pequeño retraso por seguridad
     </script>
 </body>
 </html>
