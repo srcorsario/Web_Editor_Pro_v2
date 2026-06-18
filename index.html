@@ -39,12 +39,10 @@
         </div>
 
         <div class="tabs-container">
-            <!-- NUEVO: Nombres y Numeración solicitados -->
             <button class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
             <button class="tab-btn" onclick="switchTab('pro', this)">2. Traductor Pro</button>
             <button class="tab-btn" onclick="switchTab('sugerencias', this)">3. Sugerencias RG</button>
             <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">4. Sugerencias USOpen</button>
-            <!-- NUEVO: Pestaña Editor USOpen recuperada -->
             <button class="tab-btn" onclick="switchTab('editor-usopen', this)">5. Editor Carta USOpen</button>
         </div>
 
@@ -124,20 +122,20 @@
 
         <div id="tab-sugerencias" class="tab-content" style="display: none;">
             <div class="sugerencias-panel" id="sugerencias-contenido">
-                <!-- Contenido generado dinámicamente por sugerencias-print-rg.js -->
+                <!-- Contenido generado dinámicamente -->
             </div>
         </div>
 
         <div id="tab-sugerencias-usopen" class="tab-content" style="display: none;">
             <div class="sugerencias-panel" id="sugerencias-contenido-usopen">
-                <!-- Contenido generado dinámicamente por sugerencias-print-usopen.js -->
+                <!-- Contenido generado dinámicamente -->
             </div>
         </div>
 
     </div>
 
     <button class="btn-add-float" onclick="abrirSelector()">+</button>
-    <button class="btn-guardar-main" onclick="enviarAlExcel()">GUARDAR CAMBIOS EN WEB</button>
+    <button class="btn-guardar-main" id="btn-guardar-dinamico" onclick="enviarAlExcel()">GUARDAR CAMBIOS EN WEB</button>
 
     <div id="modal-selector" class="modal">
         <div class="modal-content">
@@ -226,9 +224,9 @@
     <script src="sugerencias-print-usopen.js"></script>
 
     <script>
-        console.log("%c[DEBUG] Inicializando configuración de URLs...", "color: blue; font-weight: bold;");
+        console.log("%c[Editor] Inicializando configuración de URLs...", "color: blue; font-weight: bold;");
 
-        // NUEVO: Configuración de URLs para cada restaurante
+        // Configuración de URLs para cada restaurante
         const URLS_RG = {
             csv: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv",
             script: "https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec"
@@ -239,11 +237,44 @@
             script: "https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec"
         };
 
+        // Función auxiliar para actualizar el texto del botón dinámico
+        function actualizarTextoBotonGuardar() {
+            const btn = document.getElementById('btn-guardar-dinamico');
+            if (!btn) return;
+
+            const url = window.CSV_URL || "";
+            let contexto = "RG";
+            
+            if (url.includes("USOPEN")) {
+                contexto = "USOPEN";
+            } else if (url.includes("2PACX-1vT9rPlxpax2l")) {
+                contexto = "RG";
+            }
+
+            btn.innerText = `GUARDAR CAMBIOS EN WEB ${contexto.toUpperCase()}`;
+            console.log(`[Editor] Botón actualizado a contexto: ${contexto}`);
+        }
+
         // Lógica nativa de Pestañas (Tabs) con cambio de contexto de datos
         async function switchTab(tabId, btnElement) {
-            console.group(`%c[DEBUG] Cambiando a pestaña: ${tabId}`, "color: orange; font-weight: bold;");
+            console.log(`[Editor] Cambiando a pestaña: ${tabId}`);
             
-            // 1. Gestión Visual de Pestañas
+            // 1. PREVENCIÓN DE PÉRDIDA DE DATOS
+            // Verificar si estamos en un editor y si hay cambios sin guardar
+            const esEditorActual = document.getElementById('tab-editor').style.display !== 'none' || document.getElementById('tab-editor').classList.contains('active');
+            
+            if (esEditorActual && window.hayCambiosSinGuardar) {
+                const confirmarGuardar = confirm("⚠️ Tienes cambios sin guardar en esta pestaña. ¿Quieres guardarlos antes de cambiar?");
+                if (confirmarGuardar) {
+                    // Ejecutar guardado. Note: enviarAlExcel normalmente recarga la página, así que no llegaremos al resto de la función.
+                    await window.enviarAlExcel();
+                    return; 
+                }
+                // Si el usuario cancela o no hubo guardado, procedemos (se perderán los cambios locales al cargar nuevos datos)
+                console.log("[Editor] Usuario descartó cambios o guardado falló. Procediendo con cambio...");
+            }
+
+            // 2. Gestión Visual de Pestañas
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.remove('active');
                 el.style.display = 'none';
@@ -263,9 +294,9 @@
             }
             if(btnElement) btnElement.classList.add('active');
 
-            // 2. Visibilidad de Botones Flotantes (Solo en Editor)
+            // 3. Visibilidad de Botones Flotantes (Solo en Editor)
             const floatBtn = document.querySelector('.btn-add-float');
-            const saveBtn = document.querySelector('.btn-guardar-main');
+            const saveBtn = document.querySelector('.btn-guardar-dinamico');
             
             if (targetTabId === 'editor') {
                 if(floatBtn) floatBtn.style.display = 'block';
@@ -275,7 +306,7 @@
                 if(saveBtn) saveBtn.style.display = 'none';
             }
 
-            // 3. Enrutamiento de Datos (Cambio de Restaurante)
+            // 4. Enrutamiento de Datos (Cambio de Restaurante)
             let targetUrls = URLS_RG; // Por defecto RG para Editor y Pro
             let dataContext = "RG";
 
@@ -284,7 +315,7 @@
                 dataContext = "USOPEN";
             }
 
-            console.log(`[DEBUG] Contexto de datos establecido a: ${dataContext}`);
+            console.log(`[Editor] Contexto de datos establecido a: ${dataContext}`);
 
             // Actualizamos las variables globales que usa app.js
             window.CSV_URL = targetUrls.csv;
@@ -292,47 +323,29 @@
 
             // Actualizamos el input visual de la pestaña Pro para consistencia
             const sheetsInput = document.getElementById('sheetsUrl');
-            if (sheetsInput) {
-                sheetsInput.value = targetUrls.csv;
-                console.log(`[DEBUG] Input 'sheetsUrl' actualizado a: ${targetUrls.csv.substring(0, 50)}...`);
-            } else {
-                console.error("[DEBUG] ERROR CRÍTICO: No se encontró el input #sheetsUrl");
-            }
+            if (sheetsInput) sheetsInput.value = targetUrls.csv;
 
-            // 4. Recarga de Datos Obligatoria
-            // Si la función cargar existe en app.js, la ejecutamos para refrescar datosLocales
+            // NUEVO: Actualizar botón de guardar inmediatamente
+            actualizarTextoBotonGuardar();
+
+            // 5. Recarga de Datos Obligatoria
             if (typeof window.cargar === 'function') {
-                console.log(`[DEBUG] Ejecutando window.cargar()...`);
                 try {
                     await window.cargar();
-                    console.log(`[DEBUG] window.cargar() finalizado. Registros en memoria: ${window.datosLocales ? window.datosLocales.length : 0}`);
                 } catch (e) {
-                    console.error("[DEBUG] Error durante window.cargar():", e);
+                    console.error("[Editor] Error cargando:", e);
                     alert("Error cargando datos: " + e.message);
                 }
             } else {
-                console.error("[DEBUG] ERROR CRÍTICO: window.cargar NO está definido. app.js no cargó correctamente.");
+                console.error("[Editor] ERROR CRÍTICO: window.cargar NO está definido.");
             }
 
-            // 5. Disparadores de Renderizado Específicos
-            // Forzamos el redibujado de las sugerencias porque app.js ya no llama a renderizarSugerencias por defecto
+            // 6. Disparadores de Renderizado Específicos
             if (tabId === 'sugerencias') {
-                console.log("[DEBUG] Intentando renderizar Sugerencias RG...");
-                if (typeof window.renderCartaRG === 'function') {
-                    window.renderCartaRG();
-                } else {
-                    console.warn("[DEBUG] window.renderCartaRG no existe.");
-                }
+                if (typeof window.renderCartaRG === 'function') window.renderCartaRG();
             } else if (tabId === 'sugerencias-usopen') {
-                console.log("[DEBUG] Intentando renderizar Sugerencias USOpen...");
-                if (typeof window.renderCartaUSOPEN === 'function') {
-                    window.renderCartaUSOPEN();
-                } else {
-                    console.warn("[DEBUG] window.renderCartaUSOPEN no existe.");
-                }
+                if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
             }
-
-            console.groupEnd();
         }
     </script>
 </body>
