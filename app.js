@@ -1,15 +1,16 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.38-BRUTE-FORCE-RETRY'; 
+window.APP_VERSIONS.app = '1.0.39-CLIENT-SIDE-OPTIMISTIC-LOCK'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
 // NUEVO: Flag global para controlar cambios sin guardar
 window.hayCambiosSinGuardar = false;
 
-// NUEVO: Marca de tiempo del último intento de guardado
+// NUEVO: Timestamp y datos de la última edición para parchear inconsistencias del CDN
 window.lastSaveAttempt = 0;
+window.lastSavedSnapshot = []; // Copia profunda de lo que el usuario acaba de guardar
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -97,11 +98,11 @@ function extraerJSON(texto) {
 }
 
 async function cargar(retryCount = 0) {
-    const DANGER_WINDOW_MS = 15000; // Ventana de 15s post-guardado para aplicar reintentos agresivos
+    const CONSISTENCY_WINDOW_MS = 30000; // Ventana de 30s para aplicar parche optimista
     const MAX_RETRIES = 5; // Aumentado de 3 a 5 para maximizar probabilidad de acierto
     
     const timeSinceSave = Date.now() - window.lastSaveAttempt;
-    const isDangerZone = timeSinceSave < DANGER_WINDOW_MS;
+    const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
 
     console.log("[Editor] Cargando datos..." + (retryCount > 0 ? `(Reintento ${retryCount}/${MAX_RETRIES})` : ""));
     try {
@@ -121,13 +122,67 @@ async function cargar(retryCount = 0) {
         });
         const text = await resp.text();
         
-        // NUEVO: Lógica "Brute Force" para CDN
-        // Si estamos en zona de peligro (guardado reciente) y aún no hemos superado los intentos máximos,
-        // reintentamos aunque parezca correcto, para evitar el "Torn Read" (cabecera nueva, cuerpo viejo).
-        if (isDangerZone && retryCount < MAX_RETRIES) {
-            console.warn(`[Editor] Zona de Peligro (Caché Google). Reintento automático #${retryCount + 1} para asegurar consistencia...`);
+        // NUEVO: Lógica "Client-Side Optimistic Lock"
+        // Si estamos en zona de consistencia post-guardado y tenemos una snapshot local:
+        if (isConsistencyZone && retryCount === 0 && window.lastSavedSnapshot.length > 0) {
+            // Intento 1: Parsear CSV recibido
+            let tempData = [];
+            const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
+            
+            filas.forEach((f, i) => {
+                if (i === 0) return; 
+                const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const id = parseInt(c[0]);
+                
+                if (!isNaN(id)) {
+                    let item = {
+                        id: id,
+                        precio: c[1] || "0.00", 
+                        activa: (c[2] || "").trim().toUpperCase() === "SI",
+                        carpeta: c[4] || "",
+                        imagen: c[5] || "",
+                        alergenos: superLimpiar(c[6])
+                    };
+                    if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
+                        window.IDIOMAS_ORDEN.forEach(lang => {
+                            const index = window.IDIOMAS_CSV_INDICES[lang];
+                            if (index !== undefined && c[index] !== undefined) {
+                                item[lang] = superLimpiar(c[index]);
+                            }
+                        });
+                    }
+                    tempData.push(item);
+                }
+            });
+
+            // Comprobar datos recibidos contra la snapshot (lo que el usuario acaba de editar)
+            let parchesAplicados = 0;
+            window.lastSavedSnapshot.forEach(savedItem => {
+                const loadedItem = tempData.find(i => i.id === savedItem.id);
+                // Si el item cargado es diferente al item guardado, el servidor dio datos viejos.
+                // Asumimos que el usuario tiene la razón.
+                if (loadedItem) {
+                    // Verificación simple: ¿Son iguales?
+                    const esIgual = JSON.stringify(loadedItem) === JSON.stringify(savedItem);
+                    if (!esIgual) {
+                        console.warn(`[Editor] ⚠️ Inconsistencia detectada ID ${savedItem.id}. Servidor devolvió datos antiguos. Aplicando parche local.`);
+                        parchesAplicados++;
+                        // Sobrescribimos el valor cargado con el valor guardado en memoria local
+                        Object.keys(savedItem).forEach(k => loadedItem[k] = savedItem[k]);
+                    }
+                }
+            });
+
+            if (parchesAplicados > 0 && typeof UI !== 'undefined' && typeof UI.log === 'function') {
+                UI.log(`[Alerta] Google CDN aún desactualizado. Se han restaurado ${parchesAplicados} ediciones locales para corregir la visualización.`);
+            }
+        }
+
+        // NUEVO: Lógica "Brute Force" para CDN (si el parche no fue suficiente o no aplica)
+        if (isConsistencyZone && retryCount < MAX_RETRIES) {
+            console.warn(`[Editor] Zona de Peligro (Caché Google). Reintento automático #${retryCount + 1}...`);
             if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log(`[Info] Verificando datos post-guardado (Intento ${retryCount + 1}/${MAX_RETRIES})...`);
+                UI.log(`[Info] Verificando consistencia de datos (Intento ${retryCount + 1}/${MAX_RETRIES})...`);
             }
             // Esperar 300ms para cambiar de conexión/IP/ nodo CDN
             await new Promise(r => setTimeout(r, 300));
@@ -787,11 +842,14 @@ async function enviarAlExcel() {
     btn.innerText = "⏳ ENVIANDO..."; 
     btn.disabled = true;
     
-    // NUEVO: Actualizar texto del botón, resetear flag y marcar tiempo de guardado
+    // NUEVO: Actualizar texto del botón, resetear flag y marcar tiempo de guardado + Snapshot
     console.log("[Editor] Guardando cambios...");
     window.lastSaveAttempt = Date.now();
     
     datosLocales.sort((a, b) => a.id - b.id);
+    
+    // NUEVO: Guardar snapshot local de los datos actuales para parchear inconsistencias del CDN
+    window.lastSavedSnapshot = JSON.parse(JSON.stringify(datosLocales));
     
     const payload = datosLocales.map(p => {
         let obj = {
