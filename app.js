@@ -1,7 +1,9 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.32'; 
+window.APP_VERSIONS.app = '1.0.33-DEBUG'; 
+
+console.group("%c[DEBUG] app.js CARGADO", "color: green; font-size: 14px; font-weight: bold;");
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -26,13 +28,19 @@ const CROQUETAS_CONFIG = {
 // NUEVO: Puente de seguridad para acceder a la configuración global si el módulo config.js no exporta a window directamente
 // Esto es necesario porque app.js se carga como script estándar, no módulo.
 function getWebAppUrlSafe() {
+    console.log("[DEBUG] getWebAppUrlSafe llamado.");
     if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl();
-    return (typeof window.WEB_APP_URL !== 'undefined') ? window.WEB_APP_URL : '';
+    if (typeof window.WEB_APP_URL !== 'undefined') return window.WEB_APP_URL;
+    console.error("[DEBUG] ERROR: WEB_APP_URL no está definida globalmente.");
+    return '';
 }
 
 function getCsvUrlSafe() {
+    console.log("[DEBUG] getCsvUrlSafe llamado.");
     if (typeof window.getCsvUrl === 'function') return window.getCsvUrl();
-    return (typeof window.CSV_URL !== 'undefined') ? window.CSV_URL : '';
+    if (typeof window.CSV_URL !== 'undefined') return window.CSV_URL;
+    console.error("[DEBUG] ERROR: CSV_URL no está definida globalmente.");
+    return '';
 }
 
 function superLimpiar(texto) {
@@ -88,19 +96,32 @@ function extraerJSON(texto) {
 }
 
 async function cargar() {
+    console.log("[DEBUG] Iniciando función cargar()...");
     try {
         const url = getCsvUrlSafe();
+        if (!url) {
+            console.error("[DEBUG] cargar() abortado: URL vacía.");
+            return;
+        }
+        
+        console.log(`[DEBUG] Fetching URL: ${url.substring(0, 60)}...`);
+        
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
         const resp = await fetch(url + '&t=' + Date.now());
         const text = await resp.text();
+        
+        console.log(`[DEBUG] Texto recibido. Longitud: ${text.length}`);
+        
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
         
+        console.log(`[DEBUG] Filas a procesar: ${filas.length}`);
+        
         filas.forEach((f, i) => {
-            if (i === 0) return;
+            if (i === 0) return; // Saltar cabecera
             const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             const id = parseInt(c[0]);
             
@@ -122,31 +143,44 @@ async function cargar() {
                             item[lang] = superLimpiar(c[index]);
                         }
                     });
+                } else {
+                    console.warn("[DEBUG] IDIOMAS_ORDEN o IDIOMAS_CSV_INDICES no definidos. No se mapearán idiomas.");
                 }
                 
                 datosLocales.push(item);
             }
         });
         
+        console.log(`[DEBUG] datosLocales poblado con ${datosLocales.length} elementos.`);
+        
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
             statusCarga.innerText = `✅ Datos Sincronizados (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
             statusCarga.className = "status-ok";
         }
+        
         renderizar();
-        // NUEVO: Eliminada la llamada a renderizarSugerencias() para evitar conflictos con los scripts específicos RG y USOPEN
+        generarMenuAgrupado(); // NUEVO: Generar menú para crear platos
     } catch (e) { 
+        console.error("[DEBUG] Error en cargar():", e);
         const statusCarga = document.getElementById('status-carga');
-        if (statusCarga) statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
+        if (statusCarga) {
+            statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
+            statusCarga.className = "status-error";
+        }
     }
 }
 
 function renderizar() {
+    console.log("[DEBUG] renderizar() llamado.");
     let h = "";
     datosLocales.sort((a, b) => a.id - b.id);
     
     // Validación de existencia de ESTRUCTURA
-    if (!window.ESTRUCTURA) return console.error("Error: ESTRUCTURA no definida en languages.js");
+    if (!window.ESTRUCTURA) {
+        console.error("[DEBUG] ERROR CRÍTICO: window.ESTRUCTURA no está definido. languages.js no cargó.");
+        return;
+    }
 
     ESTRUCTURA.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
@@ -181,10 +215,18 @@ function renderizar() {
         });
         h += `</div>`;
     });
-    document.getElementById('editor-dinamico').innerHTML = h;
+    
+    const editorDinamico = document.getElementById('editor-dinamico');
+    if(editorDinamico) {
+        editorDinamico.innerHTML = h;
+        console.log("[DEBUG] renderizar() finalizado. HTML inyectado.");
+    } else {
+        console.error("[DEBUG] ERROR: No se encontró #editor-dinamico");
+    }
 }
 
 function moverPlato(id, direccion) {
+    console.log(`[DEBUG] moverPlato(${id}, ${direccion})`);
     const idx = datosLocales.findIndex(x => x.id === id);
     if (direccion === 'subir' && idx > 0) {
         const temp = datosLocales[idx].id;
@@ -199,8 +241,13 @@ function moverPlato(id, direccion) {
 }
 
 function abrirEditor(id, esNuevo = false) {
+    console.log(`[DEBUG] abrirEditor(${id}, ${esNuevo})`);
+    
     let p = esNuevo ? datosTempNuevo : datosLocales.find(x => x.id === id);
-    if (!p) return; // NUEVO: Seguridad por si el plato no existe
+    if (!p) {
+        console.error(`[DEBUG] ERROR: Plato con ID ${id} no encontrado en memoria.`);
+        return; 
+    }
     
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
@@ -320,7 +367,12 @@ function abrirEditor(id, esNuevo = false) {
     
     comprobarRequisitosTraduccion();
     const modalEditor = document.getElementById('modal-editor');
-    if (modalEditor) modalEditor.style.display = 'block';
+    if (modalEditor) {
+        modalEditor.style.display = 'block';
+        console.log("[DEBUG] Modal editor abierto.");
+    } else {
+        console.error("[DEBUG] ERROR: Modal editor no encontrado.");
+    }
 }
 
 function actualizarNombreCroquetas() {
@@ -357,6 +409,7 @@ function comprobarRequisitosTraduccion() {
 }
 
 async function generarTraduccionEN() {
+    console.log("[DEBUG] generarTraduccionEN() llamado.");
     const nombreEs = document.getElementById('edit-es').value.trim();
     const esVino = (platoEditandoId >= 13000);
     const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
@@ -517,6 +570,7 @@ function cerrarModalTraduccionEN() {
 }
 
 async function ejecutarTraduccionAutomatica() {
+    console.log("[DEBUG] ejecutarTraduccionAutomatica() llamado.");
     const btn = document.getElementById('btn-autotraducir');
     if (!btn) return;
     
@@ -623,10 +677,14 @@ async function ejecutarTraduccionAutomatica() {
 }
 
 function aplicarCambiosPlato() {
+    console.log("[DEBUG] aplicarCambiosPlato() llamado.");
     let p = esNuevoPlato ? datosTempNuevo : datosLocales.find(x => x.id === platoEditandoId);
     if (!p) return;
     
-    if (esNuevoPlato) datosLocales.push(p);
+    if (esNuevoPlato) {
+        datosLocales.push(p);
+        console.log("[DEBUG] Nuevo plato añadido a datosLocales.");
+    }
     
     const esVino = (platoEditandoId >= 13000);
 
@@ -657,10 +715,15 @@ function aplicarCambiosPlato() {
     
     cerrarModal('modal-editor');
     renderizar();
+    console.log("[DEBUG] Cambios aplicados y renderizado actualizado.");
 }
 
 function generarMenuAgrupado() {
-    if (!window.ESTRUCTURA) return;
+    console.log("[DEBUG] generarMenuAgrupado() llamado.");
+    if (!window.ESTRUCTURA) {
+        console.error("[DEBUG] ERROR: ESTRUCTURA no definida. No se puede generar el menú de agrupados.");
+        return;
+    }
     
     let h = "";
     ESTRUCTURA.forEach(cat => {
@@ -675,11 +738,20 @@ function generarMenuAgrupado() {
         h += `</div>`;
     });
     const listaAgrupada = document.getElementById('lista-agrupada');
-    if (listaAgrupada) listaAgrupada.innerHTML = h;
+    if (listaAgrupada) {
+        listaAgrupada.innerHTML = h;
+        console.log("[DEBUG] Menú de agrupados generado e inyectado.");
+    } else {
+        console.error("[DEBUG] ERROR: No se encontró #lista-agrupada");
+    }
 }
 
 function prepararNuevoPlato(baseId, folder) {
-    if (!window.ESTRUCTURA) return;
+    console.log(`[DEBUG] prepararNuevoPlato(${baseId}, '${folder}')`);
+    if (!window.ESTRUCTURA) {
+        console.error("[DEBUG] ERROR: No se puede preparar nuevo plato sin ESTRUCTURA.");
+        return;
+    }
 
     let maxPermitido = baseId + 99;
     ESTRUCTURA.forEach(cat => {
@@ -692,6 +764,8 @@ function prepararNuevoPlato(baseId, folder) {
     const similares = datosLocales.filter(p => p.id >= baseId && p.id <= maxPermitido);
     const nuevoId = similares.length > 0 ? Math.max(...similares.map(p => p.id)) + 1 : baseId;
     
+    console.log(`[DEBUG] Calculando nuevo ID... Max permitido: ${maxPermitido}. Siguientes: ${similares.map(p=>p.id)}. Nuevo ID: ${nuevoId}`);
+
     if (nuevoId > maxPermitido) {
         alert("Límite de IDs alcanzado para esta subcategoría específica.");
         return;
@@ -716,6 +790,8 @@ function prepararNuevoPlato(baseId, folder) {
         IDIOMAS_ORDEN.forEach(l => { datosTempNuevo[l] = ""; });
     }
     datosTempNuevo['es'] = "NUEVO ELEMENTO";
+
+    console.log("[DEBUG] Objeto temporal creado:", datosTempNuevo);
 
     cerrarModal('modal-selector');
     abrirEditor(nuevoId, true);
@@ -789,8 +865,14 @@ function toggleActivo(id, v) {
 }
 
 function abrirSelector() { 
+    console.log("[DEBUG] abrirSelector() llamado.");
     const modal = document.getElementById('modal-selector');
-    if (modal) modal.style.display = 'block'; 
+    if (modal) {
+        modal.style.display = 'block';
+        console.log("[DEBUG] Modal selector abierto.");
+    } else {
+        console.error("[DEBUG] ERROR: Modal selector no encontrado.");
+    }
 }
 
 function cerrarModal(id) { 
@@ -851,6 +933,7 @@ function eliminarKeySeleccionada() {
 }
 
 // Inicialización automática al cargar la página
+console.log("[DEBUG] Iniciando carga inicial...");
 cargar();
 actualizarListaKeys();
 
@@ -867,3 +950,5 @@ if (editPrecioInput) {
         }
     });
 }
+
+console.groupEnd();
