@@ -39,10 +39,13 @@
         </div>
 
         <div class="tabs-container">
-            <button class="tab-btn active" onclick="switchTab('editor', this)">📋 Editor de Menú</button>
-            <button class="tab-btn" onclick="switchTab('pro', this)">🛠️ Traductor Pro & Ajustes</button>
-            <button class="tab-btn" onclick="switchTab('sugerencias', this)">📝 Sugerencias RG</button>
-            <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">🏆 Sugerencias US Open</button>
+            <!-- NUEVO: Nombres y Numeración solicitados -->
+            <button class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
+            <button class="tab-btn" onclick="switchTab('pro', this)">2. Traductor Pro</button>
+            <button class="tab-btn" onclick="switchTab('sugerencias', this)">3. Sugerencias RG</button>
+            <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">4. Sugerencias USOpen</button>
+            <!-- NUEVO: Pestaña Editor USOpen recuperada -->
+            <button class="tab-btn" onclick="switchTab('editor-usopen', this)">5. Editor Carta USOpen</button>
         </div>
 
         <div id="tab-editor" class="tab-content active">
@@ -223,6 +226,8 @@
     <script src="sugerencias-print-usopen.js"></script>
 
     <script>
+        console.log("%c[DEBUG] Inicializando configuración de URLs...", "color: blue; font-weight: bold;");
+
         // NUEVO: Configuración de URLs para cada restaurante
         const URLS_RG = {
             csv: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv",
@@ -236,6 +241,8 @@
 
         // Lógica nativa de Pestañas (Tabs) con cambio de contexto de datos
         async function switchTab(tabId, btnElement) {
+            console.group(`%c[DEBUG] Cambiando a pestaña: ${tabId}`, "color: orange; font-weight: bold;");
+            
             // 1. Gestión Visual de Pestañas
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.remove('active');
@@ -243,7 +250,13 @@
             });
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             
-            const targetTab = document.getElementById('tab-' + tabId);
+            // Lógica especial para la pestaña 'editor-usopen' (Visualmente muestra el editor)
+            let targetTabId = tabId;
+            if (tabId === 'editor-usopen') {
+                targetTabId = 'editor';
+            }
+            
+            const targetTab = document.getElementById('tab-' + targetTabId);
             if(targetTab) {
                 targetTab.classList.add('active');
                 targetTab.style.display = 'block';
@@ -254,7 +267,7 @@
             const floatBtn = document.querySelector('.btn-add-float');
             const saveBtn = document.querySelector('.btn-guardar-main');
             
-            if (tabId === 'editor') {
+            if (targetTabId === 'editor') {
                 if(floatBtn) floatBtn.style.display = 'block';
                 if(saveBtn) saveBtn.style.display = 'block';
             } else {
@@ -264,10 +277,14 @@
 
             // 3. Enrutamiento de Datos (Cambio de Restaurante)
             let targetUrls = URLS_RG; // Por defecto RG para Editor y Pro
-            
-            if (tabId === 'sugerencias-usopen') {
+            let dataContext = "RG";
+
+            if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
                 targetUrls = URLS_USOPEN;
+                dataContext = "USOPEN";
             }
+
+            console.log(`[DEBUG] Contexto de datos establecido a: ${dataContext}`);
 
             // Actualizamos las variables globales que usa app.js
             window.CSV_URL = targetUrls.csv;
@@ -275,21 +292,47 @@
 
             // Actualizamos el input visual de la pestaña Pro para consistencia
             const sheetsInput = document.getElementById('sheetsUrl');
-            if (sheetsInput) sheetsInput.value = targetUrls.csv;
+            if (sheetsInput) {
+                sheetsInput.value = targetUrls.csv;
+                console.log(`[DEBUG] Input 'sheetsUrl' actualizado a: ${targetUrls.csv.substring(0, 50)}...`);
+            } else {
+                console.error("[DEBUG] ERROR CRÍTICO: No se encontró el input #sheetsUrl");
+            }
 
             // 4. Recarga de Datos Obligatoria
             // Si la función cargar existe en app.js, la ejecutamos para refrescar datosLocales
             if (typeof window.cargar === 'function') {
-                await window.cargar();
+                console.log(`[DEBUG] Ejecutando window.cargar()...`);
+                try {
+                    await window.cargar();
+                    console.log(`[DEBUG] window.cargar() finalizado. Registros en memoria: ${window.datosLocales ? window.datosLocales.length : 0}`);
+                } catch (e) {
+                    console.error("[DEBUG] Error durante window.cargar():", e);
+                    alert("Error cargando datos: " + e.message);
+                }
+            } else {
+                console.error("[DEBUG] ERROR CRÍTICO: window.cargar NO está definido. app.js no cargó correctamente.");
             }
 
             // 5. Disparadores de Renderizado Específicos
             // Forzamos el redibujado de las sugerencias porque app.js ya no llama a renderizarSugerencias por defecto
-            if (tabId === 'sugerencias' && typeof window.renderCartaRG === 'function') {
-                window.renderCartaRG();
-            } else if (tabId === 'sugerencias-usopen' && typeof window.renderCartaUSOPEN === 'function') {
-                window.renderCartaUSOPEN();
+            if (tabId === 'sugerencias') {
+                console.log("[DEBUG] Intentando renderizar Sugerencias RG...");
+                if (typeof window.renderCartaRG === 'function') {
+                    window.renderCartaRG();
+                } else {
+                    console.warn("[DEBUG] window.renderCartaRG no existe.");
+                }
+            } else if (tabId === 'sugerencias-usopen') {
+                console.log("[DEBUG] Intentando renderizar Sugerencias USOpen...");
+                if (typeof window.renderCartaUSOPEN === 'function') {
+                    window.renderCartaUSOPEN();
+                } else {
+                    console.warn("[DEBUG] window.renderCartaUSOPEN no existe.");
+                }
             }
+
+            console.groupEnd();
         }
     </script>
 </body>
