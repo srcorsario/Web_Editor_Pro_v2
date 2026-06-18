@@ -1,4 +1,3 @@
-// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 2 - POR FAVOR UNIR MENTALMENTE]
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
@@ -164,7 +163,8 @@ export const UI = {
         
         UI.log(`[Info] Descargando CSV desde Google Sheets (${targetUrl.substring(0, 40)}...)...`);
         try {
-            const resp = await fetch(targetUrl + '&t=' + Date.now());
+            // MODIFICADO: Añadida opción { cache: "no-store" } para forzar petición fresca y evitar cachés HTTP agresivas
+            const resp = await fetch(targetUrl + '&t=' + Date.now(), { cache: "no-store" });
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
             
@@ -544,8 +544,6 @@ export const UI = {
         const selectorInicio = document.getElementById('rangoInicio');
         const selectorFin = document.getElementById('rangoFin');
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
-// [🔒 FIN DE PARTE 1. CONTINÚA EN LA SIGUIENTE PARTE]
-   // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
         const ENDPOINT_GATEWAY = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
@@ -708,6 +706,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // CORRECCIÓN: Exponer UI al objeto global para que funcione con los onclick del HTML
 window.UI = UI;
-
-
-// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2]
