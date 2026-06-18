@@ -1,4 +1,4 @@
-/* Web Editor Pro - Styles CSS - Version 1.0.7 */
+/* Web Editor Pro - Styles CSS - Version 1.0.8 */
 :root { 
     --primario: #e67e22; 
     --fondo: #f4f7f6; 
@@ -17,7 +17,7 @@ body {
 
 .container { width: 100%; max-width: 1200px; margin: 0 auto; }
 
-/* MODIFICADO: Header adaptado para logos laterales */
+/* MODIFICADO: Header adaptado para logos laterales (Tamaño duplicado) */
 .header-admin { 
     background: white; padding: 10px 20px; border-radius: 10px; 
     margin-bottom: 15px; border-bottom: 4px solid var(--primario); 
@@ -38,7 +38,7 @@ body {
 
 .header-logo {
     width: auto;
-    height: 80px;
+    height: 160px; /* MODIFICADO: Aumentado a 160px (el doble) */
     object-fit: contain;
     flex-shrink: 0;
 }
@@ -495,7 +495,7 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     }
 
     .header-logo {
-        height: 50px; /* Reducir tamaño en móvil */
+        height: 100px; /* MODIFICADO: Aumentado a 100px (el doble del móvil anterior) */
     }
 
     .header-center-wrapper {
