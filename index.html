@@ -13,23 +13,30 @@
 <body>
 
     <div class="container">
+        <!-- MODIFICADO: Estructura Flexbox para header con logos laterales -->
         <div class="header-admin">
-            <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
-            <div id="status-carga" class="status-ok">⏳ Conectando...</div>
+            <img src="logo RG_REST.png" class="header-logo header-logo-left" alt="Logo RG">
             
-            <div class="api-keys-manager">
-                <label class="label-seccion">Gestión de API Keys Gemini</label>
-                <div class="api-keys-inputs">
-                    <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar">
-                    <button id="addKeyBtn" class="btn-add-key">Añadir Key</button>
-                </div>
-                <div class="api-keys-list">
-                    <div id="contenedorSelectKeys" class="flex-1">
-                        <select id="selectKeys" class="select-keys"></select>
+            <div class="header-center-wrapper">
+                <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
+                <div id="status-carga" class="status-ok">⏳ Conectando...</div>
+                
+                <div class="api-keys-manager">
+                    <label class="label-seccion">Gestión de API Keys Gemini</label>
+                    <div class="api-keys-inputs">
+                        <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar">
+                        <button id="addKeyBtn" class="btn-add-key">Añadir Key</button>
                     </div>
-                    <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key">✕</button>
+                    <div class="api-keys-list">
+                        <div id="contenedorSelectKeys" class="flex-1">
+                            <select id="selectKeys" class="select-keys"></select>
+                        </div>
+                        <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key">✕</button>
+                    </div>
                 </div>
             </div>
+
+            <img src="USOPEN_REST.png" class="header-logo header-logo-right" alt="Logo USOPEN">
         </div>
 
         <div class="tabs-container">
