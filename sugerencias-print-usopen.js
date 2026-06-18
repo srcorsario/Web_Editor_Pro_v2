@@ -1,10 +1,9 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.7.0-USOPEN-FixLogic";
+    const VERSION = "v2.8.0-USOPEN-StrictID";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
-    // MODIFICADO: Estilos balanceados para A4
     const stylePrintUsOpen = document.createElement('style');
     stylePrintUsOpen.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
@@ -31,7 +30,6 @@
         .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; } 
         .sugerencias-nombre-en { font-size: 0.8rem !important; color: #7f8c8d !important; font-style: italic !important; }
 
-        /* NUEVO: Estilo para uvas inline en vinos */
         .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 4px !important; font-size: 0.8rem !important; color: #555 !important; font-style: normal !important; font-weight: 400 !important; }
 
         .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 2px !important; align-items: center !important; }
@@ -86,7 +84,6 @@
                 fuente = window.datosLocales || [];
             }
 
-            // CORREGIDO: Variable correcta 'tieneDatosEnRango'
             const tieneDatosEnRango = fuente.some(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
             
             if (tieneDatosEnRango) {
@@ -110,9 +107,10 @@
         platos.forEach(p => {
             const id = parseInt(p.id, 10);
             const desgloseEs = window.desglosarNombre(p.es);
-            const nombreEsBajo = (desgloseEs && desgloseEs.nombre) ? desgloseEs.nombre.toLowerCase() : "";
             
-            if (id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta'))) {
+            // MODIFICADO: Filtro estricto por ID para evitar conflictos con "salsa de vino..."
+            // Solo el ID 12990 se trata como vino en sugerencias
+            if (id === 12990) {
                 vinos.push(p);
             } else if (id >= 12100 && id <= 12399) {
                 entrantes.push(p);
@@ -150,9 +148,8 @@
                 const objEs = window.desglosarNombre(p.es);
                 const objEn = window.desglosarNombre(p.en);
                 
-                // NUEVO: Detección robusta de vino
-                const nombreEsBajo = (objEs && objEs.nombre) ? objEs.nombre.toLowerCase() : "";
-                const esVino = (p.id >= 13000 || p.id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta')));
+                // MODIFICADO: Detección estricta por ID. Eliminada búsqueda de texto.
+                const esVino = (p.id === 12990 || p.id >= 13000);
                 
                 // LÓGICA DE COMPACTACIÓN
                 let htmlNombreEs = "";
