@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.33-DEBUG'; 
+window.APP_VERSIONS.app = '1.0.34-DEBUG-FIX'; 
 
 console.group("%c[DEBUG] app.js CARGADO", "color: green; font-size: 14px; font-weight: bold;");
 
@@ -25,21 +25,36 @@ const CROQUETAS_CONFIG = {
     vegetariana: ["Setas", "Coliflor con curry"]
 };
 
-// NUEVO: Puente de seguridad para acceder a la configuración global si el módulo config.js no exporta a window directamente
-// Esto es necesario porque app.js se carga como script estándar, no módulo.
+// NUEVO: Puente de seguridad para acceder a la configuración global.
+// MODIFICADO: Prioridad estricta a la variable global dinámica (window.CSV_URL) sobre la configuración estática.
 function getWebAppUrlSafe() {
     console.log("[DEBUG] getWebAppUrlSafe llamado.");
-    if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl();
-    if (typeof window.WEB_APP_URL !== 'undefined') return window.WEB_APP_URL;
+    if (typeof window.WEB_APP_URL !== 'undefined') {
+        console.log(`[DEBUG] getWebAppUrlSafe usando window.WEB_APP_URL: ${window.WEB_APP_URL.substring(0, 40)}...`);
+        return window.WEB_APP_URL;
+    }
+    if (typeof window.getWebAppUrl === 'function') {
+        console.log("[DEBUG] getWebAppUrlSafe usando window.getWebAppUrl (fallback).");
+        return window.getWebAppUrl();
+    }
     console.error("[DEBUG] ERROR: WEB_APP_URL no está definida globalmente.");
     return '';
 }
 
 function getCsvUrlSafe() {
     console.log("[DEBUG] getCsvUrlSafe llamado.");
-    if (typeof window.getCsvUrl === 'function') return window.getCsvUrl();
-    if (typeof window.CSV_URL !== 'undefined') return window.CSV_URL;
-    console.error("[DEBUG] ERROR: CSV_URL no está definida globalmente.");
+    // CAMBIADO: Verificar primero la variable global dinámica (controlada por index.html/pestañas)
+    if (typeof window.CSV_URL !== 'undefined') {
+        console.log(`[DEBUG] getCsvUrlSafe usando window.CSV_URL: ${window.CSV_URL.substring(0, 60)}...`);
+        return window.CSV_URL;
+    }
+    // Fallback a config estática si no se ha definido global
+    if (typeof window.getCsvUrl === 'function') {
+        const url = window.getCsvUrl();
+        console.log(`[DEBUG] getCsvUrlSafe usando window.getCsvUrl (fallback): ${url.substring(0, 60)}...`);
+        return url;
+    }
+    console.error("[DEBUG] ERROR: CSV_URL no está definida globalmente ni en config.");
     return '';
 }
 
@@ -104,7 +119,7 @@ async function cargar() {
             return;
         }
         
-        console.log(`[DEBUG] Fetching URL: ${url.substring(0, 60)}...`);
+        console.log(`[DEBUG] Fetching URL: ${url.substring(0, 80)}...`);
         
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
@@ -153,6 +168,10 @@ async function cargar() {
         
         console.log(`[DEBUG] datosLocales poblado con ${datosLocales.length} elementos.`);
         
+        // NUEVO: Exponer datosLocales a window para que otros scripts (index.html, sugerencias) puedan verlos
+        window.datosLocales = datosLocales;
+        console.log("[DEBUG] window.datosLocales sincronizado.");
+
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
             statusCarga.innerText = `✅ Datos Sincronizados (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
