@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.35-RETOQUE-VISUAL'; 
+window.APP_VERSIONS.app = '1.0.36-CACHE-BUST-V2'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -105,8 +105,12 @@ async function cargar() {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
-        // MODIFICADO: Añadida opción { cache: "no-store" } para forzar petición fresca y evitar cachés HTTP agresivas
-        const resp = await fetch(url + '&t=' + Date.now(), { cache: "no-store" });
+        // MODIFICADO: Se usa parámetro 'zx' (estándar de Google para bypass) y cabeceras forzadas
+        // Esto evita que el balanceador de carga de Google retenga versiones antiguas del CSV en endpoints /pub
+        const resp = await fetch(url + '&zx=' + Date.now(), { 
+            cache: "no-store",
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
+        });
         const text = await resp.text();
         
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
