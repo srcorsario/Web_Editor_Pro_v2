@@ -545,7 +545,7 @@ export const UI = {
         const selectorFin = document.getElementById('rangoFin');
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
 // [🔒 FIN DE PARTE 1. CONTINÚA EN LA SIGUIENTE PARTE]
-    // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
+   // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
         const ENDPOINT_GATEWAY = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
@@ -706,6 +706,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// CORRECCIÓN: Exponer UI al objeto global para que funcione con los onclick del HTML
+window.UI = UI;
 
 
 // [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2]
