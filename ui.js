@@ -2,7 +2,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.9'; // MODIFICADO: Actualizado por cambios en Pro Panel
+window.APP_VERSIONS.ui = '1.0.10'; // MODIFICADO: Modal de selección de destino
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -363,9 +363,6 @@ export const UI = {
         const inputRG = document.getElementById('sheetsUrlRG');
         
         if (loadSheetsBtnRG && inputRG) {
-            // Rellenar valor inicial si está vacío
-            if (!inputRG.value && window.CSV_URL_RG) inputRG.value = window.CSV_URL_RG;
-
             loadSheetsBtnRG.onclick = () => {
                 const url = inputRG.value.trim();
                 if (url) {
@@ -385,9 +382,6 @@ export const UI = {
         const inputUSOpen = document.getElementById('sheetsUrlUSOpen');
 
         if (loadSheetsBtnUSOpen && inputUSOpen) {
-            // Rellenar valor inicial si está vacío
-            if (!inputUSOpen.value && window.CSV_URL_USOPEN) inputUSOpen.value = window.CSV_URL_USOPEN;
-
             loadSheetsBtnUSOpen.onclick = () => {
                 const url = inputUSOpen.value.trim();
                 if (url) {
@@ -403,39 +397,15 @@ export const UI = {
             };
         }
 
-        // MODIFICADO: Lógica para importar CSV local con pregunta de destino
+        // NUEVO: Lógica para importar CSV local con Modal de Selección
         const inputImportar = document.getElementById('archivoLocal');
         if (inputImportar) {
             inputImportar.onchange = (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    // NUEVO: Preguntar destino
-                    const destino = prompt("¿Dónde quieres subir estos datos?\nEscribe 'RG' para Roland Garros o 'USOPEN' para US Open:", "RG");
-                    
-                    if (destino && (destino.toUpperCase() === 'RG' || destino.toUpperCase() === 'USOPEN')) {
-                        const modoDefinitivo = destino.toUpperCase();
-                        stateContainer.currentProMode = modoDefinitivo;
-                        window.currentMode = modoDefinitivo;
-                        
-                        UI.log(`[Import] Archivo local seleccionado. Destino asignado: ${modoDefinitivo}`);
-                        
-                        UI.importarCSV(file, (headers, data) => {
-                            stateContainer.headers = headers;
-                            stateContainer.csvData = data;
-                            UI.log(`[OK] Archivo cargado en memoria externa. Filas procesadas: ${data.length}`);
-                            
-                            // NUEVO: Actualizar botón sync
-                            UI.actualizarTextoBotonSync();
-                            
-                            if (typeof UI.renderTable === 'function') {
-                                UI.renderTable();
-                            }
-                        });
-                    } else {
-                        UI.log("[Cancel] Importación cancelada o destino no válido.");
-                        // Limpiar input para permitir re-seleccionar el mismo archivo si se desea
-                        inputImportar.value = '';
-                    }
+                    // Guardamos el archivo temporalmente y mostramos el modal
+                    window.UI.tempImportFile = file;
+                    document.getElementById('modal-seleccionar-destino').style.display = 'block';
                 }
             };
         }
@@ -463,6 +433,45 @@ export const UI = {
                 UI.log("[Info] Enviando señal de interrupción al bucle de peticiones distribuidas...");
             };
         }
+    },
+
+    // NUEVO: Función llamada por el modal para confirmar importación
+    confirmarImportacion: (mode) => {
+        const file = window.UI.tempImportFile;
+        if (!file) return UI.log("[Error] No se encontró el archivo temporal.");
+
+        const modoDefinitivo = mode.toUpperCase();
+        stateContainer.currentProMode = modoDefinitivo;
+        window.currentMode = modoDefinitivo;
+        
+        UI.log(`[Import] Archivo local seleccionado. Destino asignado: ${modoDefinitivo}`);
+        
+        UI.importarCSV(file, (headers, data) => {
+            stateContainer.headers = headers;
+            stateContainer.csvData = data;
+            UI.log(`[OK] Archivo cargado en memoria externa. Filas procesadas: ${data.length}`);
+            
+            // NUEVO: Actualizar botón sync
+            UI.actualizarTextoBotonSync();
+            
+            if (typeof UI.renderTable === 'function') {
+                UI.renderTable();
+            }
+        });
+
+        // Limpiar y cerrar modal
+        UI.cancelarImportacion();
+    },
+
+    // NUEVO: Función para cerrar modal y limpiar input
+    cancelarImportacion: () => {
+        const modal = document.getElementById('modal-seleccionar-destino');
+        if (modal) modal.style.display = 'none';
+        
+        const input = document.getElementById('archivoLocal');
+        if (input) input.value = '';
+        
+        window.UI.tempImportFile = null;
     },
 
     exportarCSV: (headers, csvData) => {
@@ -536,7 +545,7 @@ export const UI = {
         const selectorFin = document.getElementById('rangoFin');
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
 // [🔒 FIN DE PARTE 1. CONTINÚA EN LA SIGUIENTE PARTE]
-        // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
+    // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 2 - UNIR CON PARTE ANTERIOR]
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
         const ENDPOINT_GATEWAY = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
