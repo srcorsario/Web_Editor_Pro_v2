@@ -1,10 +1,9 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.7.0-RG-FixLogic";
+    const VERSION = "v2.8.0-RG-StrictID";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
-    // MODIFICADO: Estilos balanceados para A4 (Fuentes legibles pero compactas)
     const stylePrint = document.createElement('style');
     stylePrint.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
@@ -28,12 +27,9 @@
         
         .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 5px !important; width: 100% !important; } 
         .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
-        
-        /* Aumentado ligeramente a 0.9rem tras eliminar inglés en vinos */
         .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; } 
         .sugerencias-nombre-en { font-size: 0.8rem !important; color: #7f8c8d !important; font-style: italic !important; }
         
-        /* NUEVO: Estilo para uvas inline en vinos (Compactado) */
         .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 4px !important; font-size: 0.8rem !important; color: #555 !important; font-style: normal !important; font-weight: 400 !important; }
 
         .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 2px !important; align-items: center !important; }
@@ -85,7 +81,6 @@
         }
     };
 
-    // FUNCIÓN DE RENDERIZADO MEJORADA CON POLLING
     window.renderCartaRG = function() {
         const contenedor = document.getElementById('sugerencias-contenido');
         if (!contenedor) return;
@@ -130,9 +125,10 @@
         platos.forEach(p => {
             const id = parseInt(p.id, 10);
             const desgloseEs = window.desglosarNombre(p.es);
-            const nombreEsBajo = (desgloseEs && desgloseEs.nombre) ? desgloseEs.nombre.toLowerCase() : "";
             
-            if (id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta'))) {
+            // MODIFICADO: Filtro estricto por ID para evitar conflictos con "salsa de vino..."
+            // Solo el ID 12990 se trata como vino en sugerencias
+            if (id === 12990) {
                 vinos.push(p);
             } else if (id >= 12100 && id <= 12399) {
                 entrantes.push(p);
@@ -170,13 +166,10 @@
                 const objEs = window.desglosarNombre(p.es);
                 const objEn = window.desglosarNombre(p.en);
                 
-                // NUEVO: Detección robusta de vino para lógica de impresión
-                const nombreEsBajo = (objEs && objEs.nombre) ? objEs.nombre.toLowerCase() : "";
-                const esVino = (p.id >= 13000 || p.id === 12990 || (nombreEsBajo.includes('vino') && !nombreEsBajo.includes('copa') && !nombreEsBajo.includes('vinagreta')));
+                // MODIFICADO: Detección estricta por ID. Eliminada búsqueda de texto.
+                const esVino = (p.id === 12990 || p.id >= 13000);
                 
-                // LÓGICA DE COMPACTACIÓN (Optimización A4):
-                // 1. Vinos: Solo Español, Uvas Inline. Sin Inglés.
-                // 2. No-Vinos: Español e Inglés en líneas separadas.
+                // LÓGICA DE COMPACTACIÓN
                 let htmlNombreEs = "";
                 let htmlNombreEn = ""; 
 
