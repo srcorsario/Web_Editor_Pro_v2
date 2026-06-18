@@ -1,47 +1,49 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.6.0-RG-Polling";
+    const VERSION = "v2.6.1-RG-FixAndPrint";
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
+    // MODIFICADO: Ajustes de tamaño para forzar A4 (Fuentes, márgenes e imágenes reducidos)
     const stylePrint = document.createElement('style');
     stylePrint.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
-        @page { size: A4; margin: 0; }
+        @page { size: A4; margin: 10mm 10mm 10mm 10mm; }
         .sugerencias-panel { 
-            background: #ffffff !important; padding: 20px 30px !important; width: 210mm !important; 
-            min-height: 297mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important;
+            background: #ffffff !important; padding: 10px 20px !important; width: 190mm !important; 
+            min-height: 277mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important;
             box-sizing: border-box !important; display: flex !important; flex-direction: column !important;
         }
-        .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; fuente: 20px !important; margin-bottom: 15px !important; position: relative !important; }
-        .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
-        .sugerencias-title-es { font-weight: 700 !important; font-size: 1.5rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
-        .sugerencias-title-en { font-weight: 300 !important; font-size: 1.1rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; } 
+        .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; fuente: 16px !important; margin-bottom: 10px !important; position: relative !important; }
+        .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 1px !important; }
+        .sugerencias-title-es { font-weight: 700 !important; font-size: 1.2rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
+        .sugerencias-title-en { font-weight: 300 !important; font-size: 0.9rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; } 
         .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
         
-        .sugerencias-logo-img { width: 150px !important; height: auto !important; object-fit: contain !important; } 
+        .sugerencias-logo-img { width: 100px !important; height: auto !important; object-fit: contain !important; } 
         
         .sugerencias-body { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; }
-        .sugerencias-seccion { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 15px !important; }
-        .sugerencias-seccion-titulo { font-size: 0.9rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 2px solid #334155 !important; margin-bottom: 10px !important; text-transform: uppercase !important; }
+        .sugerencias-seccion { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 10px !important; }
+        .sugerencias-seccion-titulo { font-size: 0.8rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 1px solid #334155 !important; margin-bottom: 6px !important; text-transform: uppercase !important; }
         
-        .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 8px !important; width: 100% !important; } 
+        .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 4px !important; width: 100% !important; } 
         .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
-        .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; } 
+        .sugerencias-nombre-es { font-size: 0.8rem !important; font-weight: 600 !important; color: #000000 !important; } 
+        .sugerencias-nombre-en { font-size: 0.7rem !important; color: #7f8c8d !important; font-style: italic !important; }
         
-        /* NUEVO: Estilo para uvas inline en vinos */
-        .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 6px !important; font-size: 0.75rem !important; color: #64748b !important; font-style: italic !important; font-weight: normal !important; }
+        /* NUEVO: Estilo para uvas inline en vinos (Compactado) */
+        .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 4px !important; font-size: 0.7rem !important; color: #555 !important; font-style: normal !important; font-weight: 400 !important; }
 
-        .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 3px !important; align-items: center !important; }
-        .sugerencias-alergeno-icon { display: inline-block !important; width: 18px !important; height: 18px !important; object-fit: contain !important; vertical-align: middle !important; } 
-        .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
-        .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; } 
+        .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 2px !important; align-items: center !important; }
+        .sugerencias-alergeno-icon { display: inline-block !important; width: 14px !important; height: 14px !important; object-fit: contain !important; vertical-align: middle !important; margin-right: 2px !important; } 
+        .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 6px !important; height: 1px !important; }
+        .sugerencias-precio { font-size: 0.8rem !important; font-weight: 700 !important; flex-shrink: 0 !important; } 
         
-        .sugerencias-footer { margin-top: auto !important; padding-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: flex-end !important; width: 100% !important; }
-        .sugerencias-advertencia-alergenos { font-size: 0.65rem !important; color: #64748b !important; max-width: 65% !important; line-height: 1.3 !important; text-align: left !important; font-style: italic !important; margin-bottom: 5px !important; }
-        .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 5px !important; margin-left: auto !important; }
+        .sugerencias-footer { margin-top: auto !important; padding-top: 10px !important; display: flex !important; justify-content: space-between !important; align-items: flex-end !important; width: 100% !important; }
+        .sugerencias-advertencia-alergenos { font-size: 0.55rem !important; color: #64748b !important; max-width: 70% !important; line-height: 1.2 !important; text-align: left !important; font-style: italic !important; margin-bottom: 2px !important; }
+        .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 2px !important; margin-left: auto !important; }
         
-        .sugerencias-qr-img { width: 100px !important; height: 100px !important; object-fit: contain !important; } 
+        .sugerencias-qr-img { width: 80px !important; height: 80px !important; object-fit: contain !important; } 
         
         .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
         
@@ -68,15 +70,16 @@
 
         if (modo === 'rg') {
             if (tipo === 'default') {
+                // MODIFICADO: Sintaxis corregida (img.src)
                 img.src = 'qr-code-RG-MOD.png';
             } else if (tipo === 'mod') {
-                src 'qr-code.png';
+                img.src = 'qr-code.png';
             }
         } else if (modo === 'usopen') {
             if (tipo === 'default') {
                 img.src = `qr-usopen_oficial.png`;
             } else if (tipo === 'mod') {
-                src = `qr-usopen_mod.png`;
+                img.src = `qr-usopen_mod.png`;
             }
         }
     };
@@ -161,9 +164,10 @@
             <div class="sugerencias-body">
         `;
 
+        // MODIFICADO: Función renderCat optimizada para A4
         const renderCat = (titulo, lista, className) => {
             if (lista.length === 0) return '';
-            let h = `<div class="sugerencias-seccion ${className}"><div class="sugerencias-headers  ... TITLE ... ... </div>`;
+            let h = `<div class="sugerencias-seccion ${className}"><div class="sugerencias-seccion-titulo">${titulo}</div>`;
             lista.forEach(p => {
                 let iconsHtml = '';
                 if (p.alergenos) {
@@ -171,11 +175,15 @@
                 }
                 
                 const objEs = window.desglosarNombre(p.es);
-                const esVino = (p.id >= 13000); // Detección por ID es más robusta que por nombre para evitar falsos positivos
+                // NUEVO: Definición necesaria para evitar crash
+                const objEn = window.desglosarNombre(p.en);
                 
-                // LÓGICA DE COMPACTACIÓN (Optimización):
+                // MODIFICADO: Detección de vino por ID para lógica de impresión compacta
+                const esVino = (p.id >= 13000);
+                
+                // LÓGICA DE COMPACTACIÓN (Optimización A4):
                 // 1. Vinos: Solo Español, Uvas Inline. Sin Inglés.
-                // 2. No-Vinos: Español e Inglés.
+                // 2. No-Vinos: Español e Inglés en líneas separadas.
                 let htmlNombreEs = "";
                 let htmlNombreEn = ""; 
 
@@ -191,6 +199,7 @@
                     htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>` + 
                                     (objEs.uvas ? `<span class="sugerencias-detalles-uvas">${objEs.uvas}</span>` : '');
                     
+                    // Solo renderizar inglés si no es vino (para ahorrar espacio en A4)
                     htmlNombreEn = `<span class="sugerencias-nombre-en">${objEn.nombre}</span>` + 
                                   (objEn.uvas ? `<span class="sugerencias-detalles-uvas-en">${objEn.uvas}</span>` : '');
                 }
@@ -250,8 +259,4 @@
         pWin.document.close();
     };
 
-    // MODIFICADO: Usar la función de renderizado con polling en lugar del timeout simple
-    window.renderCartaRG = renderCartaRG;
-    setTimeout(renderCartaRG, 1500); // Aumentado timeout para dar tiempo a `app.js` y evitar "Esperando datos"
-})();
 })();
