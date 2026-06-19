@@ -280,7 +280,8 @@
     </div>
 
     <!-- NUEVO: Panel de Debug Visual Fijo -->
-    <div id="debug-panel" style="position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4;">
+    <!-- MODIFICADO: Añadido cursor: grab para feedback visual de arrastre -->
+    <div id="debug-panel" style="position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4; cursor: grab;">
         <div style="color: #f8fafc; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 4px;">🐛 DEBUG MODE ACTIVO</div>
         <div id="debug-versions" style="margin-bottom: 8px; color: #94a3b8;"></div>
         <hr style="border-color: #334155; margin: 5px 0;">
@@ -337,6 +338,7 @@
                     targetTab.classList.add('active');
                     targetTab.style.display = 'block';
                 }
+
                 if(btnElement) btnElement.classList.add('active');
 
                 // 3. Visibilidad de Botones Flotantes (Solo en Editor)
@@ -449,6 +451,53 @@
 
             sDiv.innerHTML = sHtml;
         }
+
+        // NUEVO: Lógica nativa para hacer el panel de Debug arrastrable con el ratón
+        (function() {
+            const panel = document.getElementById('debug-panel');
+            if (!panel) return;
+
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let initialLeft = 0, initialTop = 0;
+
+            panel.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                
+                // Obtener rectángulo actual para calcular offset preciso
+                const rect = panel.getBoundingClientRect();
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = rect.left;
+                initialTop = rect.top;
+                
+                // Convertir bottom/left a top/left absoluto para evitar saltos al arrastrar
+                panel.style.left = initialLeft + 'px';
+                panel.style.top = initialTop + 'px';
+                panel.style.bottom = 'auto';
+                panel.style.right = 'auto';
+                
+                panel.style.cursor = 'grabbing';
+                e.preventDefault(); // Prevenir selección de texto mientras se arrastra
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                // Aplicar nueva posición
+                panel.style.left = (initialLeft + dx) + 'px';
+                panel.style.top = (initialTop + dy) + 'px';
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.style.cursor = 'grab'; // Restaurar cursor al liberar
+            });
+        })();
 
         // Actualizar cada segundo para que se vea el contador y el estado en tiempo real
         setInterval(updateDebugPanel, 1000);
