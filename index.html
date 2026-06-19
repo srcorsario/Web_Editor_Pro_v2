@@ -21,6 +21,9 @@
                 <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
                 <div id="status-carga" class="status-ok">⏳ Conectando...</div>
                 
+                <!-- NUEVO: Contador visual de consistencia optimista -->
+                <div id="optimistic-timer" style="display:none; font-size: 0.7rem; color: #c0392b; font-weight: bold; margin-top: 5px; background: #fce4e4; padding: 4px 8px; border-radius: 4px;">🔒 Modo consistencia local: <span id="timer-seconds">30</span>s</div>
+
                 <div class="api-keys-manager">
                     <label class="label-seccion">Gestión de API Keys Gemini</label>
                     <div class="api-keys-inputs">
