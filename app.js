@@ -1,7 +1,8 @@
+// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 3 - POR FAVOR UNIR MENTALMENTE]
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.39-CLIENT-SIDE-OPTIMISTIC-LOCK'; 
+window.APP_VERSIONS.app = '1.0.40-CLIENT-SIDE-OPTIMISTIC-LOCK-FIX'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -11,6 +12,7 @@ window.hayCambiosSinGuardar = false;
 // NUEVO: Timestamp y datos de la última edición para parchear inconsistencias del CDN
 window.lastSaveAttempt = 0;
 window.lastSavedSnapshot = []; // Copia profunda de lo que el usuario acaba de guardar
+window.optimisticTimerInterval = null; // NUEVO: Referencia al intervalo del contador visual
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -99,12 +101,11 @@ function extraerJSON(texto) {
 
 async function cargar(retryCount = 0) {
     const CONSISTENCY_WINDOW_MS = 30000; // Ventana de 30s para aplicar parche optimista
-    const MAX_RETRIES = 5; // Aumentado de 3 a 5 para maximizar probabilidad de acierto
     
     const timeSinceSave = Date.now() - window.lastSaveAttempt;
     const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
 
-    console.log("[Editor] Cargando datos..." + (retryCount > 0 ? `(Reintento ${retryCount}/${MAX_RETRIES})` : ""));
+    console.log("[Editor] Cargando datos..." + (retryCount > 0 ? `(Reintento ${retryCount})` : ""));
     try {
         const url = getCsvUrlSafe();
         if (!url) return;
@@ -115,79 +116,15 @@ async function cargar(retryCount = 0) {
             UI.log('[Editor] Conectando con Google Sheets remoto...');
         }
         
-        // MODIFICADO: Parámetro 'zx' y cabeceras forzadas
+        // Parámetro 'zx' y cabeceras forzadas
         const resp = await fetch(url + '&zx=' + Date.now(), { 
             cache: "no-store",
             headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
         });
         const text = await resp.text();
         
-        // NUEVO: Lógica "Client-Side Optimistic Lock"
-        // Si estamos en zona de consistencia post-guardado y tenemos una snapshot local:
-        if (isConsistencyZone && retryCount === 0 && window.lastSavedSnapshot.length > 0) {
-            // Intento 1: Parsear CSV recibido
-            let tempData = [];
-            const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
-            
-            filas.forEach((f, i) => {
-                if (i === 0) return; 
-                const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                const id = parseInt(c[0]);
-                
-                if (!isNaN(id)) {
-                    let item = {
-                        id: id,
-                        precio: c[1] || "0.00", 
-                        activa: (c[2] || "").trim().toUpperCase() === "SI",
-                        carpeta: c[4] || "",
-                        imagen: c[5] || "",
-                        alergenos: superLimpiar(c[6])
-                    };
-                    if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
-                        window.IDIOMAS_ORDEN.forEach(lang => {
-                            const index = window.IDIOMAS_CSV_INDICES[lang];
-                            if (index !== undefined && c[index] !== undefined) {
-                                item[lang] = superLimpiar(c[index]);
-                            }
-                        });
-                    }
-                    tempData.push(item);
-                }
-            });
-
-            // Comprobar datos recibidos contra la snapshot (lo que el usuario acaba de editar)
-            let parchesAplicados = 0;
-            window.lastSavedSnapshot.forEach(savedItem => {
-                const loadedItem = tempData.find(i => i.id === savedItem.id);
-                // Si el item cargado es diferente al item guardado, el servidor dio datos viejos.
-                // Asumimos que el usuario tiene la razón.
-                if (loadedItem) {
-                    // Verificación simple: ¿Son iguales?
-                    const esIgual = JSON.stringify(loadedItem) === JSON.stringify(savedItem);
-                    if (!esIgual) {
-                        console.warn(`[Editor] ⚠️ Inconsistencia detectada ID ${savedItem.id}. Servidor devolvió datos antiguos. Aplicando parche local.`);
-                        parchesAplicados++;
-                        // Sobrescribimos el valor cargado con el valor guardado en memoria local
-                        Object.keys(savedItem).forEach(k => loadedItem[k] = savedItem[k]);
-                    }
-                }
-            });
-
-            if (parchesAplicados > 0 && typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log(`[Alerta] Google CDN aún desactualizado. Se han restaurado ${parchesAplicados} ediciones locales para corregir la visualización.`);
-            }
-        }
-
-        // NUEVO: Lógica "Brute Force" para CDN (si el parche no fue suficiente o no aplica)
-        if (isConsistencyZone && retryCount < MAX_RETRIES) {
-            console.warn(`[Editor] Zona de Peligro (Caché Google). Reintento automático #${retryCount + 1}...`);
-            if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log(`[Info] Verificando consistencia de datos (Intento ${retryCount + 1}/${MAX_RETRIES})...`);
-            }
-            // Esperar 300ms para cambiar de conexión/IP/ nodo CDN
-            await new Promise(r => setTimeout(r, 300));
-            return cargar(retryCount + 1);
-        }
+        // NUEVO: Eliminado el bucle de reintentos "Brute Force" porque sobrescribía 
+        // el parche optimista con datos antiguos del CDN en los intentos subsiguientes.
         
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
@@ -219,6 +156,30 @@ async function cargar(retryCount = 0) {
             }
         });
         
+        // NUEVO: Lógica "Client-Side Optimistic Lock" definitiva.
+        // Se aplica SIEMPRE al final del parseo si estamos en zona de peligro, 
+        // garantizando que ni el editor ni las sugerencias usen datos viejos del CDN.
+        if (isConsistencyZone && window.lastSavedSnapshot && window.lastSavedSnapshot.length > 0) {
+            let parchesAplicados = 0;
+            window.lastSavedSnapshot.forEach(savedItem => {
+                const loadedItem = datosLocales.find(i => i.id === savedItem.id);
+                if (loadedItem) {
+                    const esIgual = JSON.stringify(loadedItem) === JSON.stringify(savedItem);
+                    if (!esIgual) {
+                        console.warn(`[Editor] ⚠️ Inconsistencia detectada ID ${savedItem.id}. Aplicando parche optimista definitivo.`);
+                        parchesAplicados++;
+                        Object.keys(savedItem).forEach(k => loadedItem[k] = savedItem[k]);
+                    }
+                }
+            });
+
+            if (parchesAplicados > 0) {
+                if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+                    UI.log(`[Alerta] CDN desactualizado. Asegurando ${parchesAplicados} ediciones locales en memoria.`);
+                }
+            }
+        }
+
         console.log(`[Editor] ${datosLocales.length} platos cargados.`);
         
         // Exponer a window para otros scripts
@@ -244,6 +205,39 @@ async function cargar(retryCount = 0) {
             statusCarga.className = "status-error";
         }
     }
+}
+
+// NUEVO: Sistema de contador visual para el modo Optimistic Patch
+function iniciarContadorOptimista() {
+    const CONSISTENCY_WINDOW_MS = 30000;
+    const timerDiv = document.getElementById('optimistic-timer');
+    const timerSeconds = document.getElementById('timer-seconds');
+    
+    // Limpiar intervalo previo si existe
+    if (window.optimisticTimerInterval) {
+        clearInterval(window.optimisticTimerInterval);
+    }
+    
+    if (timerDiv) timerDiv.style.display = 'block';
+    
+    const endTime = Date.now() + CONSISTENCY_WINDOW_MS;
+    
+    // Forzar primera actualización visual inmediata
+    if (timerSeconds) timerSeconds.innerText = Math.ceil(CONSISTENCY_WINDOW_MS / 1000);
+    
+    window.optimisticTimerInterval = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+        if (timerSeconds) timerSeconds.innerText = remaining;
+        
+        if (remaining <= 0) {
+            clearInterval(window.optimisticTimerInterval);
+            window.optimisticTimerInterval = null;
+            if (timerDiv) timerDiv.style.display = 'none';
+            // NUEVO: Limpiar snapshot cuando expire el tiempo para volver a la normalidad
+            window.lastSavedSnapshot = []; 
+            console.log("[Editor] Ventana de consistencia optimista finalizada. Volviendo a confiar en el CDN.");
+        }
+    }, 1000);
 }
 
 function renderizar() {
@@ -432,6 +426,9 @@ function abrirEditor(id, esNuevo = false) {
 
 function actualizarNombreCroquetas() {
     const esCroquetaVeg = (platoEditandoId >= 12200 && platoEditandoId <= 12299);
+
+// [🔒 FIN DE PARTE 1. CONTINÚA EN LA SIGUIENTE PARTE]
+// [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 3 - UNIR CON PARTE ANTERIOR]
     const seleccionadas = Array.from(document.querySelectorAll('.croqueta-btn.selected')).map(el => el.innerText.trim());
     
     if (seleccionadas.length === 0) {
@@ -826,10 +823,6 @@ function prepararNuevoPlato(baseId, folder) {
     }
     datosTempNuevo['es'] = "NUEVO ELEMENTO";
 
-    // Nota: Al aceptar cambios se marcará como dirty. Al crear solo se prepara, no se guarda hasta aceptar.
-    // Pero si añadimos el array, técnicamente es un cambio en memoria.
-    // Dejaremos que `aplicarCambiosPlato` maneje el flag al final.
-
     cerrarModal('modal-selector');
     abrirEditor(nuevoId, true);
 }
@@ -842,7 +835,6 @@ async function enviarAlExcel() {
     btn.innerText = "⏳ ENVIANDO..."; 
     btn.disabled = true;
     
-    // NUEVO: Actualizar texto del botón, resetear flag y marcar tiempo de guardado + Snapshot
     console.log("[Editor] Guardando cambios...");
     window.lastSaveAttempt = Date.now();
     
@@ -850,6 +842,9 @@ async function enviarAlExcel() {
     
     // NUEVO: Guardar snapshot local de los datos actuales para parchear inconsistencias del CDN
     window.lastSavedSnapshot = JSON.parse(JSON.stringify(datosLocales));
+    
+    // NUEVO: Iniciar contador visual de parche optimista
+    iniciarContadorOptimista();
     
     const payload = datosLocales.map(p => {
         let obj = {
@@ -928,6 +923,9 @@ function actualizarListaKeys() {
     if (!select) return;
     
     if (keys.length === 0) {
+
+// [🔒 FIN DE PARTE 2. CONTINÚA EN LA SIGUIENTE PARTE]
+    // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3 - UNIR CON PARTE ANTERIOR]
         select.innerHTML = '<option value="">No hay API Keys</option>';
         select.disabled = true;
         return;
@@ -986,3 +984,7 @@ if (editPrecioInput) {
 }
 
 console.groupEnd();
+
+
+
+// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]
