@@ -2,16 +2,21 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.40-CLIENT-SIDE-OPTIMISTIC-LOCK-FIX'; 
+window.APP_VERSIONS.app = '1.0.41-SESSION-STORAGE-LOCK'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
 // NUEVO: Flag global para controlar cambios sin guardar
 window.hayCambiosSinGuardar = false;
 
-// NUEVO: Timestamp y datos de la última edición para parchear inconsistencias del CDN
-window.lastSaveAttempt = 0;
-window.lastSavedSnapshot = []; // Copia profunda de lo que el usuario acaba de guardar
+// NUEVO: Recuperar estado de consistencia desde sessionStorage para sobrevivir a recargas (F5)
+window.lastSaveAttempt = parseInt(sessionStorage.getItem('lastSaveAttempt') || '0');
+try {
+    window.lastSavedSnapshot = JSON.parse(sessionStorage.getItem('lastSavedSnapshot') || '[]');
+} catch (e) {
+    window.lastSavedSnapshot = [];
+}
+
 window.optimisticTimerInterval = null; // NUEVO: Referencia al intervalo del contador visual
 
 let datosLocales = [];
@@ -105,7 +110,7 @@ async function cargar(retryCount = 0) {
     const timeSinceSave = Date.now() - window.lastSaveAttempt;
     const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
 
-    console.log("[Editor] Cargando datos..." + (retryCount > 0 ? `(Reintento ${retryCount})` : ""));
+    console.log(`[Editor] Cargando datos... (Zona de peligro: ${isConsistencyZone}, Snapshot: ${window.lastSavedSnapshot.length} items)`);
     try {
         const url = getCsvUrlSafe();
         if (!url) return;
@@ -122,9 +127,6 @@ async function cargar(retryCount = 0) {
             headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
         });
         const text = await resp.text();
-        
-        // NUEVO: Eliminado el bucle de reintentos "Brute Force" porque sobrescribía 
-        // el parche optimista con datos antiguos del CDN en los intentos subsiguientes.
         
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
@@ -157,8 +159,7 @@ async function cargar(retryCount = 0) {
         });
         
         // NUEVO: Lógica "Client-Side Optimistic Lock" definitiva.
-        // Se aplica SIEMPRE al final del parseo si estamos en zona de peligro, 
-        // garantizando que ni el editor ni las sugerencias usen datos viejos del CDN.
+        // Se aplica SIEMPRE al final del parseo si estamos en zona de peligro.
         if (isConsistencyZone && window.lastSavedSnapshot && window.lastSavedSnapshot.length > 0) {
             let parchesAplicados = 0;
             window.lastSavedSnapshot.forEach(savedItem => {
@@ -233,8 +234,11 @@ function iniciarContadorOptimista() {
             clearInterval(window.optimisticTimerInterval);
             window.optimisticTimerInterval = null;
             if (timerDiv) timerDiv.style.display = 'none';
-            // NUEVO: Limpiar snapshot cuando expire el tiempo para volver a la normalidad
+            // NUEVO: Limpiar snapshot y sessionStorage cuando expire el tiempo
             window.lastSavedSnapshot = []; 
+            window.lastSaveAttempt = 0;
+            sessionStorage.removeItem('lastSavedSnapshot');
+            sessionStorage.removeItem('lastSaveAttempt');
             console.log("[Editor] Ventana de consistencia optimista finalizada. Volviendo a confiar en el CDN.");
         }
     }, 1000);
@@ -843,8 +847,9 @@ async function enviarAlExcel() {
     // NUEVO: Guardar snapshot local de los datos actuales para parchear inconsistencias del CDN
     window.lastSavedSnapshot = JSON.parse(JSON.stringify(datosLocales));
     
-    // NUEVO: Iniciar contador visual de parche optimista
-    iniciarContadorOptimista();
+    // NUEVO: Persistir en sessionStorage para que sobreviva a recargas manuales (F5)
+    sessionStorage.setItem('lastSaveAttempt', window.lastSaveAttempt.toString());
+    sessionStorage.setItem('lastSavedSnapshot', JSON.stringify(window.lastSavedSnapshot));
     
     const payload = datosLocales.map(p => {
         let obj = {
@@ -879,11 +884,16 @@ async function enviarAlExcel() {
             console.warn("[Editor] Modo 'no-cors' activo: No se puede confirmar la respuesta del servidor.");
         }
         
-        alert("✅ Petición enviada. Revisa el Google Sheet para confirmar.");
+        alert("✅ Petición enviada y memoria local bloqueada por 30s.");
         
-        // NUEVO: Resetear flag y recargar página
+        // NUEVO: Resetear flag y NO recargar la página. Los datos en memoria son la fuente de verdad ahora.
         window.hayCambiosSinGuardar = false;
-        location.reload();
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
+        
+        // NUEVO: Iniciar contador visual de parche optimista
+        iniciarContadorOptimista();
+        
     } catch (e) { 
         alert("Error al intentar impactar los datos.");
         console.error("[Editor] Error de red: ", e);
@@ -925,7 +935,7 @@ function actualizarListaKeys() {
     if (keys.length === 0) {
 
 // [🔒 FIN DE PARTE 2. CONTINÚA EN LA SIGUIENTE PARTE]
-    // [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3 - UNIR CON PARTE ANTERIOR]
+// [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3 - UNIR CON PARTE ANTERIOR]
         select.innerHTML = '<option value="">No hay API Keys</option>';
         select.disabled = true;
         return;
@@ -987,4 +997,4 @@ console.groupEnd();
 
 
 
-// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]
+// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]    
