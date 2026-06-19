@@ -2,22 +2,29 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.41-SESSION-STORAGE-LOCK'; 
+window.APP_VERSIONS.app = '1.0.42-SPLIT-3MIN-CANCEL'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
 // NUEVO: Flag global para controlar cambios sin guardar
 window.hayCambiosSinGuardar = false;
 
-// NUEVO: Recuperar estado de consistencia desde sessionStorage para sobrevivir a recargas (F5)
-window.lastSaveAttempt = parseInt(sessionStorage.getItem('lastSaveAttempt') || '0');
-try {
-    window.lastSavedSnapshot = JSON.parse(sessionStorage.getItem('lastSavedSnapshot') || '[]');
-} catch (e) {
-    window.lastSavedSnapshot = [];
-}
+// NUEVO: Estado de consistencia separado por restaurante para evitar cruces
+window.optimisticState = {
+    RG: { t: 0, s: [] },
+    USOPEN: { t: 0, s: [] }
+};
+window.optimisticTimers = { RG: null, USOPEN: null };
 
-window.optimisticTimerInterval = null; // NUEVO: Referencia al intervalo del contador visual
+// NUEVO: Recuperar estado de consistencia desde sessionStorage para sobrevivir a recargas (F5)
+try {
+    const stateRG = JSON.parse(sessionStorage.getItem('optState_RG') || 'null');
+    const stateUSOPEN = JSON.parse(sessionStorage.getItem('optState_USOPEN') || 'null');
+    if (stateRG) window.optimisticState.RG = stateRG;
+    if (stateUSOPEN) window.optimisticState.USOPEN = stateUSOPEN;
+} catch (e) {
+    console.warn("[Editor] Error recuperando estados de sessionStorage:", e);
+}
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -105,12 +112,14 @@ function extraerJSON(texto) {
 }
 
 async function cargar(retryCount = 0) {
-    const CONSISTENCY_WINDOW_MS = 30000; // Ventana de 30s para aplicar parche optimista
+    const CONSISTENCY_WINDOW_MS = 180000; // NUEVO: Ventana de 3 minutos (180s)
+    const modo = window.currentMode || 'RG';
+    const state = window.optimisticState[modo];
     
-    const timeSinceSave = Date.now() - window.lastSaveAttempt;
+    const timeSinceSave = Date.now() - state.t;
     const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
 
-    console.log(`[Editor] Cargando datos... (Zona de peligro: ${isConsistencyZone}, Snapshot: ${window.lastSavedSnapshot.length} items)`);
+    console.log(`[Editor] Cargando datos para ${modo}... (Zona de peligro: ${isConsistencyZone}, Snapshot: ${state.s.length} items)`);
     try {
         const url = getCsvUrlSafe();
         if (!url) return;
@@ -118,7 +127,7 @@ async function cargar(retryCount = 0) {
         console.log("[Editor] URL Objetivo: " + url.substring(0, 50) + "...");
         
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-            UI.log('[Editor] Conectando con Google Sheets remoto...');
+            UI.log(`[Editor] Conectando con Google Sheets remoto (${modo})...`);
         }
         
         // Parámetro 'zx' y cabeceras forzadas
@@ -158,16 +167,15 @@ async function cargar(retryCount = 0) {
             }
         });
         
-        // NUEVO: Lógica "Client-Side Optimistic Lock" definitiva.
-        // Se aplica SIEMPRE al final del parseo si estamos en zona de peligro.
-        if (isConsistencyZone && window.lastSavedSnapshot && window.lastSavedSnapshot.length > 0) {
+        // NUEVO: Lógica "Client-Side Optimistic Lock" definitiva segregada por modo.
+        if (isConsistencyZone && state.s && state.s.length > 0) {
             let parchesAplicados = 0;
-            window.lastSavedSnapshot.forEach(savedItem => {
+            state.s.forEach(savedItem => {
                 const loadedItem = datosLocales.find(i => i.id === savedItem.id);
                 if (loadedItem) {
                     const esIgual = JSON.stringify(loadedItem) === JSON.stringify(savedItem);
                     if (!esIgual) {
-                        console.warn(`[Editor] ⚠️ Inconsistencia detectada ID ${savedItem.id}. Aplicando parche optimista definitivo.`);
+                        console.warn(`[Editor] ⚠️ Inconsistencia detectada en ${modo} - ID ${savedItem.id}. Aplicando parche.`);
                         parchesAplicados++;
                         Object.keys(savedItem).forEach(k => loadedItem[k] = savedItem[k]);
                     }
@@ -176,25 +184,24 @@ async function cargar(retryCount = 0) {
 
             if (parchesAplicados > 0) {
                 if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                    UI.log(`[Alerta] CDN desactualizado. Asegurando ${parchesAplicados} ediciones locales en memoria.`);
+                    UI.log(`[Alerta] CDN ${modo} desactualizado. Asegurando ${parchesAplicados} ediciones locales.`);
                 }
             }
         }
 
-        console.log(`[Editor] ${datosLocales.length} platos cargados.`);
+        console.log(`[Editor] ${datosLocales.length} platos cargados (${modo}).`);
         
         // Exponer a window para otros scripts
         window.datosLocales = datosLocales;
 
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
-            statusCarga.innerText = `✅ Datos Sincronizados (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
+            statusCarga.innerText = `✅ Datos Sincronizados ${modo} (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
             statusCarga.className = "status-ok";
         }
         
         // NUEVO: Al cargar nuevos datos desde CSV, los cambios pendientes locales se descartan/resetean
         window.hayCambiosSinGuardar = false;
-        console.log("[Editor] Cambios sin guardar reseteados (datos cargados desde servidor).");
         
         renderizar();
         generarMenuAgrupado(); 
@@ -208,41 +215,63 @@ async function cargar(retryCount = 0) {
     }
 }
 
-// NUEVO: Sistema de contador visual para el modo Optimistic Patch
-function iniciarContadorOptimista() {
-    const CONSISTENCY_WINDOW_MS = 30000;
+// NUEVO: Sistema de contador visual segregado por restaurante
+function iniciarContadorOptimista(modo) {
+    const CONSISTENCY_WINDOW_MS = 180000; // 3 minutos
     const timerDiv = document.getElementById('optimistic-timer');
     const timerSeconds = document.getElementById('timer-seconds');
+    const timerMode = document.getElementById('timer-mode');
     
-    // Limpiar intervalo previo si existe
-    if (window.optimisticTimerInterval) {
-        clearInterval(window.optimisticTimerInterval);
+    // Limpiar intervalo previo de ESTE modo si existe
+    if (window.optimisticTimers[modo]) {
+        clearInterval(window.optimisticTimers[modo]);
     }
-    
-    if (timerDiv) timerDiv.style.display = 'block';
     
     const endTime = Date.now() + CONSISTENCY_WINDOW_MS;
     
-    // Forzar primera actualización visual inmediata
-    if (timerSeconds) timerSeconds.innerText = Math.ceil(CONSISTENCY_WINDOW_MS / 1000);
-    
-    window.optimisticTimerInterval = setInterval(() => {
+    window.optimisticTimers[modo] = setInterval(() => {
         const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-        if (timerSeconds) timerSeconds.innerText = remaining;
+        
+        // NUEVO: Solo actualizar visualmente si estamos en el modo que se está contando
+        if (window.currentMode === modo) {
+            if (timerDiv) timerDiv.style.display = 'block';
+            if (timerSeconds) timerSeconds.innerText = remaining;
+            if (timerMode) timerMode.innerText = modo;
+        }
         
         if (remaining <= 0) {
-            clearInterval(window.optimisticTimerInterval);
-            window.optimisticTimerInterval = null;
-            if (timerDiv) timerDiv.style.display = 'none';
-            // NUEVO: Limpiar snapshot y sessionStorage cuando expire el tiempo
-            window.lastSavedSnapshot = []; 
-            window.lastSaveAttempt = 0;
-            sessionStorage.removeItem('lastSavedSnapshot');
-            sessionStorage.removeItem('lastSaveAttempt');
-            console.log("[Editor] Ventana de consistencia optimista finalizada. Volviendo a confiar en el CDN.");
+            clearInterval(window.optimisticTimers[modo]);
+            window.optimisticTimers[modo] = null;
+            // Limpiar estado interno y sessionStorage
+            window.optimisticState[modo] = { t: 0, s: [] };
+            sessionStorage.removeItem('optState_' + modo);
+            console.log(`[Editor] Ventana de consistencia optimista finalizada para ${modo}.`);
+            // Ocultar si ya no quedan modos activos o si estamos en ese modo
+            if (window.currentMode === modo && timerDiv) {
+                timerDiv.style.display = 'none';
+            }
         }
     }, 1000);
 }
+
+// NUEVO: Función global para cancelar el modo optimista a voluntad
+window.cancelarModoOptimista = function(modo) {
+    if (!modo) modo = window.currentMode || 'RG';
+    console.log(`[Editor] Cancelando manualmente modo optimista para ${modo}`);
+    
+    if (window.optimisticTimers[modo]) {
+        clearInterval(window.optimisticTimers[modo]);
+        window.optimisticTimers[modo] = null;
+    }
+    
+    window.optimisticState[modo] = { t: 0, s: [] };
+    sessionStorage.removeItem('optState_' + modo);
+    
+    const timerDiv = document.getElementById('optimistic-timer');
+    if (window.currentMode === modo && timerDiv) {
+        timerDiv.style.display = 'none';
+    }
+};
 
 function renderizar() {
     let h = "";
@@ -839,17 +868,17 @@ async function enviarAlExcel() {
     btn.innerText = "⏳ ENVIANDO..."; 
     btn.disabled = true;
     
-    console.log("[Editor] Guardando cambios...");
-    window.lastSaveAttempt = Date.now();
+    const modo = window.currentMode || 'RG';
+    console.log(`[Editor] Guardando cambios para ${modo}...`);
     
     datosLocales.sort((a, b) => a.id - b.id);
     
-    // NUEVO: Guardar snapshot local de los datos actuales para parchear inconsistencias del CDN
-    window.lastSavedSnapshot = JSON.parse(JSON.stringify(datosLocales));
+    // NUEVO: Guardar snapshot local segregado por modo
+    window.optimisticState[modo].t = Date.now();
+    window.optimisticState[modo].s = JSON.parse(JSON.stringify(datosLocales));
     
-    // NUEVO: Persistir en sessionStorage para que sobreviva a recargas manuales (F5)
-    sessionStorage.setItem('lastSaveAttempt', window.lastSaveAttempt.toString());
-    sessionStorage.setItem('lastSavedSnapshot', JSON.stringify(window.lastSavedSnapshot));
+    // NUEVO: Persistir en sessionStorage específico del modo
+    sessionStorage.setItem('optState_' + modo, JSON.stringify(window.optimisticState[modo]));
     
     const payload = datosLocales.map(p => {
         let obj = {
@@ -884,15 +913,15 @@ async function enviarAlExcel() {
             console.warn("[Editor] Modo 'no-cors' activo: No se puede confirmar la respuesta del servidor.");
         }
         
-        alert("✅ Petición enviada y memoria local bloqueada por 30s.");
+        alert(`✅ Petición enviada para ${modo}. Memoria local bloqueada por 3 min.`);
         
-        // NUEVO: Resetear flag y NO recargar la página. Los datos en memoria son la fuente de verdad ahora.
+        // NUEVO: Resetear flag y NO recargar la página.
         window.hayCambiosSinGuardar = false;
         btn.innerText = textoOriginal;
         btn.disabled = false;
         
-        // NUEVO: Iniciar contador visual de parche optimista
-        iniciarContadorOptimista();
+        // NUEVO: Iniciar contador visual de parche optimista para este modo
+        iniciarContadorOptimista(modo);
         
     } catch (e) { 
         alert("Error al intentar impactar los datos.");
@@ -906,7 +935,7 @@ function toggleActivo(id, v) {
     const p = datosLocales.find(x => x.id === id);
     if(p) {
         p.activa = v; 
-        window.hayCambiosSinGuardar = true; // NUEVO
+        window.hayCambiosSinGuardar = true; 
     }
 }
 
@@ -997,4 +1026,4 @@ console.groupEnd();
 
 
 
-// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]    
+// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]
