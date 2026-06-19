@@ -249,16 +249,17 @@
                     If you have any food allergies, please inform our staff.
                 </div>
                 <div class="sugerencias-qr-container">
-                    <!-- MODIFICADO: Layout forzado en una sola línea y centrado -->
+                    <!-- MODIFICADO: Layout forzado en una sola línea, centrado y estilos de negrita alineados con el 'checked' -->
                     <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">
                         Tipo de QR:
                         <label style="cursor: pointer; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-usopen-footer" value="none" onchange="window.toggleQR('none', 'usopen')"> Sin QR
                         </label>
-                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
+                        <!-- MODIFICADO: Negrita y color asignado al que tiene el 'checked' -->
+                        <label style="cursor: pointer; color: #0d5c63; font-weight: bold;">
                             <input type="radio" name="qr-mode-usopen-footer" value="default" checked onchange="window.toggleQR('default', 'usopen')"> Oficial
                         </label>
-                        <label style="cursor: pointer; color: #0d5c63; font-weight: bold;">
+                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-usopen-footer" value="mod" onchange="window.toggleQR('mod', 'usopen')"> Alternativo
                         </label>
                     </div>
