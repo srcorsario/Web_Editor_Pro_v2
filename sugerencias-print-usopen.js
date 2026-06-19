@@ -64,6 +64,35 @@
         };
     }
 
+    // MODIFICADO: Añadida lógica para ocultar QR si se selecciona 'none'
+    window.toggleQR = function(tipo, modo) {
+        const img = document.getElementById(`img-qr-${modo}`);
+        if (!img) return;
+
+        // NUEVO: Manejar opción "Sin QR"
+        if (tipo === 'none') {
+            img.style.display = 'none';
+            return;
+        }
+
+        // Si no es "none", nos aseguramos de que sea visible
+        img.style.display = 'block';
+
+        if (modo === 'rg') {
+            if (tipo === 'default') {
+                img.src = 'qr-code-RG-MOD.png';
+            } else if (tipo === 'mod') {
+                img.src = 'qr-code.png';
+            }
+        } else if (modo === 'usopen') {
+            if (tipo === 'default') {
+                img.src = `qr-usopen_oficial.png`;
+            } else if (tipo === 'mod') {
+                img.src = `qr-usopen_mod.png`;
+            }
+        }
+    };
+
     window.renderCartaUSOPEN = function() {
         const contenedor = document.getElementById('sugerencias-contenido-usopen');
         if (!contenedor) return;
@@ -218,6 +247,10 @@
                 <div class="sugerencias-qr-container">
                     <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none;">
                         Tipo de QR:
+                        <!-- NUEVO: Opción "Sin QR" añadida -->
+                        <label style="cursor: pointer; margin-right: 10px; color: #64748b; font-weight: normal;">
+                            <input type="radio" name="qr-mode-usopen-footer" value="none" onchange="window.toggleQR('none', 'usopen')"> Sin QR
+                        </label>
                         <label style="cursor: pointer; margin-right: 10px; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-usopen-footer" value="default" checked onchange="window.toggleQR('default', 'usopen')"> Oficial
                         </label>
