@@ -249,13 +249,13 @@
                     If you have any food allergies, please inform our staff.
                 </div>
                 <div class="sugerencias-qr-container">
-                    <!-- MODIFICADO: Añadido flex-direction: column y align-items: center para usar línea completa -->
-                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <!-- MODIFICADO: Layout forzado en una sola línea y centrado -->
+                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">
                         Tipo de QR:
-                        <label style="cursor: pointer; margin-right: 0; color: #64748b; font-weight: normal;">
+                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-usopen-footer" value="none" onchange="window.toggleQR('none', 'usopen')"> Sin QR
                         </label>
-                        <label style="cursor: pointer; margin-right: 0; color: #64748b; font-weight: normal;">
+                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-usopen-footer" value="default" checked onchange="window.toggleQR('default', 'usopen')"> Oficial
                         </label>
                         <label style="cursor: pointer; color: #0d5c63; font-weight: bold;">
