@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.8.1-USOPEN-StrictID-OptimisticPatch"; // MODIFICADO: Versión incrementada
+    const VERSION = "v2.8.2-USOPEN-SplitState"; // NUEVO: Versión incrementada
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -72,8 +72,6 @@
         const MAX_INTENTOS = 10;
 
         function intentarRenderizado() {
-            // MODIFICADO: Eliminamos lectura de localStorage para asegurar datos frescos.
-            // Forzamos el uso de window.datosLocales que se actualiza al cambiar pestaña.
             let fuente = window.datosLocales || [];
 
             const tieneDatosEnRango = fuente.some(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
@@ -92,23 +90,21 @@
         intentarRenderizado();
     };
 
-    // NUEVO: Función de parche optimista para mitigar la desincronización del CDN de Google en las sugerencias
+    // NUEVO: Función de parche optimista estrictamente para USOPEN
     function aplicarParcheOptimista(fuente) {
-        const CONSISTENCY_WINDOW_MS = 30000; // 30 segundos de margen
-        const timeSinceSave = Date.now() - window.lastSaveAttempt;
+        const CONSISTENCY_WINDOW_MS = 180000; // 3 minutos
+        const state = window.optimisticState ? window.optimisticState.USOPEN : { t: 0, s: [] };
+        const timeSinceSave = Date.now() - state.t;
         
-        // Si acabamos de guardar y tenemos un snapshot local válido
-        if (timeSinceSave < CONSISTENCY_WINDOW_MS && window.lastSavedSnapshot && window.lastSavedSnapshot.length > 0) {
+        if (timeSinceSave < CONSISTENCY_WINDOW_MS && state.s && state.s.length > 0) {
             let parchesAplicados = 0;
             fuente.forEach(item => {
                 if (!item || !item.id) return;
-                const savedItem = window.lastSavedSnapshot.find(s => s.id === item.id);
+                const savedItem = state.s.find(s => s.id === item.id);
                 if (savedItem) {
-                    // Si el dato actual en memoria difiere del que el usuario guardó, el CDN dio datos viejos
                     if (JSON.stringify(item) !== JSON.stringify(savedItem)) {
-                        console.warn(`[Sugerencias USOPEN] ⚠️ CDN desactualizado detectado en ID ${item.id}. Aplicando parche visual local.`);
+                        console.warn(`[Sugerencias USOPEN] ⚠️ CDN desactualizado ID ${item.id}. Aplicando parche.`);
                         parchesAplicados++;
-                        // Sobrescribimos forzosamente con lo que el usuario acaba de guardar
                         Object.keys(savedItem).forEach(k => {
                             item[k] = savedItem[k];
                         });
@@ -116,14 +112,13 @@
                 }
             });
             if (parchesAplicados > 0) {
-                console.log(`[Sugerencias USOPEN] ✅ Se restauraron ${parchesAplicados} elementos a su estado real para la vista de impresión.`);
+                console.log(`[Sugerencias USOPEN] ✅ Restaurados ${parchesAplicados} elementos.`);
             }
         }
         return fuente;
     }
 
     function procesarYRender(fuente, contenedor) {
-        // NUEVO: Aplicar parche de seguridad antes de filtrar o renderizar cualquier cosa
         aplicarParcheOptimista(fuente);
 
         const platos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
@@ -133,8 +128,6 @@
             const id = parseInt(p.id, 10);
             const desgloseEs = window.desglosarNombre(p.es);
             
-            // MODIFICADO: Filtro estricto por ID para evitar conflictos con "salsa de vino..."
-            // Solo el ID 12990 se trata como vino en sugerencias
             if (id === 12990) {
                 vinos.push(p);
             } else if (id >= 12100 && id <= 12399) {
@@ -173,24 +166,19 @@
                 const objEs = window.desglosarNombre(p.es);
                 const objEn = window.desglosarNombre(p.en);
                 
-                // MODIFICADO: Detección estricta por ID. Eliminada búsqueda de texto.
                 const esVino = (p.id === 12990 || p.id >= 13000);
                 
-                // LÓGICA DE COMPACTACIÓN
                 let htmlNombreEs = "";
                 let htmlNombreEn = "";
 
                 if (esVino) {
-                    // EXCEPCIÓN VINO: Solo Español, Uvas Inline
                     if (objEs.uvas) {
                         htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre} <span class="sugerencias-detalles-uvas-inline">(${objEs.uvas})</span></span>`;
                     } else {
                         htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
                     }
-                    // IMPORTANTE: Forzamos vacío el inglés
                     htmlNombreEn = "";
                 } else {
-                    // ESTÁNDAR
                     htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>` + 
                                     (objEs.uvas ? `<span class="sugerencias-detalles-uvas">${objEs.uvas}</span>` : '');
                     
