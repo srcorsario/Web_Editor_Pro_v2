@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const VERSION = "v2.8.0-USOPEN-StrictID";
+    const VERSION = "v2.8.1-USOPEN-StrictID-OptimisticPatch"; // MODIFICADO: Versión incrementada
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrintUsOpen = document.createElement('style');
@@ -92,7 +92,40 @@
         intentarRenderizado();
     };
 
+    // NUEVO: Función de parche optimista para mitigar la desincronización del CDN de Google en las sugerencias
+    function aplicarParcheOptimista(fuente) {
+        const CONSISTENCY_WINDOW_MS = 30000; // 30 segundos de margen
+        const timeSinceSave = Date.now() - window.lastSaveAttempt;
+        
+        // Si acabamos de guardar y tenemos un snapshot local válido
+        if (timeSinceSave < CONSISTENCY_WINDOW_MS && window.lastSavedSnapshot && window.lastSavedSnapshot.length > 0) {
+            let parchesAplicados = 0;
+            fuente.forEach(item => {
+                if (!item || !item.id) return;
+                const savedItem = window.lastSavedSnapshot.find(s => s.id === item.id);
+                if (savedItem) {
+                    // Si el dato actual en memoria difiere del que el usuario guardó, el CDN dio datos viejos
+                    if (JSON.stringify(item) !== JSON.stringify(savedItem)) {
+                        console.warn(`[Sugerencias USOPEN] ⚠️ CDN desactualizado detectado en ID ${item.id}. Aplicando parche visual local.`);
+                        parchesAplicados++;
+                        // Sobrescribimos forzosamente con lo que el usuario acaba de guardar
+                        Object.keys(savedItem).forEach(k => {
+                            item[k] = savedItem[k];
+                        });
+                    }
+                }
+            });
+            if (parchesAplicados > 0) {
+                console.log(`[Sugerencias USOPEN] ✅ Se restauraron ${parchesAplicados} elementos a su estado real para la vista de impresión.`);
+            }
+        }
+        return fuente;
+    }
+
     function procesarYRender(fuente, contenedor) {
+        // NUEVO: Aplicar parche de seguridad antes de filtrar o renderizar cualquier cosa
+        aplicarParcheOptimista(fuente);
+
         const platos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
         let entrantes = [], principales = [], postres = [], vinos = [];
 
