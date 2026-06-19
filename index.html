@@ -21,8 +21,11 @@
                 <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
                 <div id="status-carga" class="status-ok">⏳ Conectando...</div>
                 
-                <!-- NUEVO: Contador visual de consistencia optimista -->
-                <div id="optimistic-timer" style="display:none; font-size: 0.7rem; color: #c0392b; font-weight: bold; margin-top: 5px; background: #fce4e4; padding: 4px 8px; border-radius: 4px;">🔒 Modo consistencia local: <span id="timer-seconds">30</span>s</div>
+                <!-- NUEVO: Contador visual de consistencia optimista con modo dinámico y botón cancelar -->
+                <div id="optimistic-timer" style="display:none; font-size: 0.7rem; color: #c0392b; font-weight: bold; margin-top: 5px; background: #fce4e4; padding: 4px 8px; border-radius: 4px; align-items: center; gap: 5px;">
+                    🔒 Consistencia <span id="timer-mode" style="background:#c0392b; color:white; padding: 1px 4px; border-radius: 3px; font-size: 0.65rem;">RG</span>: <span id="timer-seconds">180</span>s
+                    <button onclick="cancelarModoOptimista()" style="margin-left: 10px; background: transparent; border: 1px solid #c0392b; color: #c0392b; padding: 1px 5px; border-radius: 3px; cursor: pointer; font-size: 0.6rem; font-weight: bold;">✕ CANCELAR</button>
+                </div>
 
                 <div class="api-keys-manager">
                     <label class="label-seccion">Gestión de API Keys Gemini</label>
@@ -368,6 +371,19 @@
 
                 actualizarTextoBotonGuardar();
 
+                // NUEVO: Control de visibilidad del timer optimista al cambiar de pestaña
+                const timerDiv = document.getElementById('optimistic-timer');
+                if (timerDiv) {
+                    // Mostrar solo si el modo al que llegamos tiene un temporizador activo
+                    if (window.optimisticTimers && window.optimisticTimers[window.currentMode]) {
+                        timerDiv.style.display = 'flex'; // Usamos flex por el align-items del botón cancelar
+                        const timerMode = document.getElementById('timer-mode');
+                        if(timerMode) timerMode.innerText = window.currentMode;
+                    } else {
+                        timerDiv.style.display = 'none';
+                    }
+                }
+
                 // 5. Recarga de Datos Obligatoria
                 if (typeof window.cargar === 'function') {
                     try {
@@ -399,7 +415,7 @@
         }
         actualizarTextoBotonGuardar();
 
-        // NUEVO: Sistema de actualización del panel Debug
+        // NUEVO: Sistema de actualización del panel Debug segregado
         function updateDebugPanel() {
             const vDiv = document.getElementById('debug-versions');
             const sDiv = document.getElementById('debug-state');
@@ -414,20 +430,24 @@
             }
             vDiv.innerHTML = vHtml;
 
-            // 2. Pintar Estado de Variables Críticas
-            const timeSinceSave = Date.now() - (window.lastSaveAttempt || 0);
-            const isZone = timeSinceSave < 30000;
+            // 2. Pintar Estado de Variables Críticas (Segregado)
+            let sHtml = `<div>Modo Activo: <span style="color: #60a5fa;">${window.currentMode || 'RG'}</span></div><hr style="border-color: #334155; margin: 4px 0;">`;
             
-            sDiv.innerHTML = `
-                <div>Modo: <span style="color: #60a5fa;">${window.currentMode || 'RG'}</span></div>
-                <div>SaveTs: ${window.lastSaveAttempt || 0}</div>
-                <div>Hace: <span style="color: ${timeSinceSave < 10000 ? '#4ade80' : '#f87171'}">${Math.round(timeSinceSave/1000)}s</span></div>
-                <div style="color: ${isZone ? '#f87171' : '#4ade80'}; font-weight: bold;">
-                    Zona Peligro: ${isZone ? '⛔ ACTIVA' : '✅ INACTIVA'}
-                </div>
-                <div>Snapshot: <span style="color: #c084fc;">${window.lastSavedSnapshot ? window.lastSavedSnapshot.length : 0} items</span></div>
-                <div>Mem Local: <span style="color: #38bdf8;">${window.datosLocales ? window.datosLocales.length : 0} items</span></div>
-            `;
+            ['RG', 'USOPEN'].forEach(modo => {
+                const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
+                const timeSinceSave = Date.now() - state.t;
+                const isZone = timeSinceSave < 180000; // 3 minutos
+                
+                sHtml += `<div style="margin-bottom: 4px; color: ${modo === window.currentMode ? '#f8fafc' : '#64748b'}">--- ${modo} ---</div>`;
+                sHtml += `<div>Hace: <span style="color: ${timeSinceSave < 10000 ? '#4ade80' : '#f87171'}">${Math.round(timeSinceSave/1000)}s</span></div>`;
+                sHtml += `<div style="color: ${isZone ? '#f87171' : '#4ade80'}; font-weight: bold;">Zona Peligro: ${isZone ? '⛔ ACTIVA' : '✅ INACTIVA'}</div>`;
+                sHtml += `<div>Snapshot: <span style="color: #c084fc;">${state.s ? state.s.length : 0} items</span></div>`;
+            });
+
+            sHtml += `<hr style="border-color: #334155; margin: 4px 0;">`;
+            sHtml += `<div>Mem Local: <span style="color: #38bdf8;">${window.datosLocales ? window.datosLocales.length : 0} items</span></div>`;
+
+            sDiv.innerHTML = sHtml;
         }
 
         // Actualizar cada segundo para que se vea el contador y el estado en tiempo real
