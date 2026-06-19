@@ -276,6 +276,14 @@
         <div class="loading-text">Cargando datos...</div>
     </div>
 
+    <!-- NUEVO: Panel de Debug Visual Fijo -->
+    <div id="debug-panel" style="position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4;">
+        <div style="color: #f8fafc; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 4px;">🐛 DEBUG MODE ACTIVO</div>
+        <div id="debug-versions" style="margin-bottom: 8px; color: #94a3b8;"></div>
+        <hr style="border-color: #334155; margin: 5px 0;">
+        <div id="debug-state"></div>
+    </div>
+
     <script>
         console.log("%c[Editor] Inicializando configuración de URLs...", "color: blue; font-weight: bold;");
 
@@ -284,10 +292,7 @@
             const btn = document.getElementById('btn-guardar-dinamico');
             if (!btn) return;
 
-            // Usamos window.currentMode que es la fuente de verdad establecida en switchTab
-            // Si no está definido (primera carga antes de switch), asumimos RG por defecto
             const modo = window.currentMode || 'RG';
-            
             btn.innerText = `GUARDAR CAMBIOS EN WEB ${modo}`;
             console.log(`[Editor] Botón actualizado a contexto: ${modo}`);
         }
@@ -296,7 +301,6 @@
         async function switchTab(tabId, btnElement) {
             console.log(`[Editor] Cambiando a pestaña: ${tabId}`);
             
-            // NUEVO: Mostrar pantalla de carga inmediatamente
             const loader = document.getElementById('loading-overlay');
             if (loader) loader.style.display = 'flex';
 
@@ -307,11 +311,9 @@
                 if (esEditorActual && window.hayCambiosSinGuardar) {
                     const confirmarGuardar = confirm("⚠️ Tienes cambios sin guardar en esta pestaña. ¿Quieres guardarlos antes de cambiar?");
                     if (confirmarGuardar) {
-                        // Ejecutar guardado. Note: enviarAlExcel normalmente recarga la página.
                         await window.enviarAlExcel();
                         return; 
                     }
-                    // Si el usuario cancela o no hubo guardado, procedemos (se perderán los cambios locales al cargar nuevos datos)
                     console.log("[Editor] Usuario descartó cambios o guardado falló. Procediendo con cambio...");
                 }
 
@@ -322,7 +324,6 @@
                 });
                 document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
                 
-                // Lógica especial para la pestaña 'editor-usopen' (Visualmente muestra el editor)
                 let targetTabId = tabId;
                 if (tabId === 'editor-usopen') {
                     targetTabId = 'editor';
@@ -348,30 +349,23 @@
                 }
 
                 // 4. Enrutamiento de Datos (Cambio de Restaurante)
-                // MODIFICADO: Establecemos window.currentMode como fuente de verdad unificada
                 let dataContext = "RG";
 
                 if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
                     window.currentMode = 'USOPEN';
                     dataContext = "USOPEN";
                 } else {
-                    // Para cualquier otra pestaña (Editor RG, Sugerencias RG, Pro), asumimos RG
-                    // Nota: 'Pro' es genérico, pero por defecto operará sobre RG a menos que se añada lógica específica.
                     window.currentMode = 'RG';
                     dataContext = "RG";
                 }
 
                 console.log(`[Editor] Contexto de datos establecido a: ${dataContext} (window.currentMode: ${window.currentMode})`);
 
-                // Actualizamos el input visual de la pestaña Pro para consistencia (usando las funciones globales de config.js)
-                const sheetsInput = document.getElementById('sheetsUrl'); // Nota: En el nuevo HTML hay sheetsUrlRG y sheetsUrlUSOpen
-                // Solo actualizamos si estamos en un contexto genérico o si no existe el específico para evitar machacar lo que el usuario esté escribiendo en Pro
+                const sheetsInput = document.getElementById('sheetsUrl');
                 if (sheetsInput && window.getCsvUrl) {
-                    // Solo actualizamos si el input está vacío o corresponde al modo actual
                     if(!sheetsInput.value) sheetsInput.value = window.getCsvUrl();
                 }
 
-                // NUEVO: Actualizar botón de guardar inmediatamente basado en el nuevo modo
                 actualizarTextoBotonGuardar();
 
                 // 5. Recarga de Datos Obligatoria
@@ -393,19 +387,52 @@
                     if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
                 }
                 
-                // Asegurar que al terminar, el texto del botón esté correcto
                 actualizarTextoBotonGuardar();
             } finally {
-                // NUEVO: Ocultar pantalla de carga siempre (éxito o error)
                 if (loader) loader.style.display = 'none';
             }
         }
 
-        // Inicialización inicial: Asegurar que el modo por defecto sea RG si no se ha establecido
+        // Inicialización inicial
         if (!window.currentMode) {
             window.currentMode = 'RG';
         }
         actualizarTextoBotonGuardar();
+
+        // NUEVO: Sistema de actualización del panel Debug
+        function updateDebugPanel() {
+            const vDiv = document.getElementById('debug-versions');
+            const sDiv = document.getElementById('debug-state');
+            if (!vDiv || !sDiv) return;
+
+            // 1. Pintar Versiones
+            let vHtml = '';
+            if (window.APP_VERSIONS) {
+                for (const [key, val] of Object.entries(window.APP_VERSIONS)) {
+                    vHtml += `<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${key}: ${val}">${key}: <span style="color: #fbbf24;">${val}</span></div>`;
+                }
+            }
+            vDiv.innerHTML = vHtml;
+
+            // 2. Pintar Estado de Variables Críticas
+            const timeSinceSave = Date.now() - (window.lastSaveAttempt || 0);
+            const isZone = timeSinceSave < 30000;
+            
+            sDiv.innerHTML = `
+                <div>Modo: <span style="color: #60a5fa;">${window.currentMode || 'RG'}</span></div>
+                <div>SaveTs: ${window.lastSaveAttempt || 0}</div>
+                <div>Hace: <span style="color: ${timeSinceSave < 10000 ? '#4ade80' : '#f87171'}">${Math.round(timeSinceSave/1000)}s</span></div>
+                <div style="color: ${isZone ? '#f87171' : '#4ade80'}; font-weight: bold;">
+                    Zona Peligro: ${isZone ? '⛔ ACTIVA' : '✅ INACTIVA'}
+                </div>
+                <div>Snapshot: <span style="color: #c084fc;">${window.lastSavedSnapshot ? window.lastSavedSnapshot.length : 0} items</span></div>
+                <div>Mem Local: <span style="color: #38bdf8;">${window.datosLocales ? window.datosLocales.length : 0} items</span></div>
+            `;
+        }
+
+        // Actualizar cada segundo para que se vea el contador y el estado en tiempo real
+        setInterval(updateDebugPanel, 1000);
+        updateDebugPanel();
     </script>
 </body>
 </html>
