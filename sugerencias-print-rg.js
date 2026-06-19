@@ -2,6 +2,10 @@
     'use strict';
 
     const VERSION = "v2.8.2-RG-SplitState"; // NUEVO: Versión incrementada
+    // NUEVO: Inyectar versión en el objeto global para el Debug Mode
+    window.APP_VERSIONS = window.APP_VERSIONS || {};
+    window.APP_VERSIONS.sugerencias_rg = VERSION;
+
     const PATH_ALERGENOS = 'imagenes/alergenos/';
 
     const stylePrint = document.createElement('style');
@@ -243,13 +247,13 @@
                     If you have any food allergies, please inform our staff.
                 </div>
                 <div class="sugerencias-qr-container">
-                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none;">
+                    <!-- MODIFICADO: Añadido flex-direction: column y align-items: center para usar línea completa -->
+                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: column; align-items: center; gap: 4px;">
                         Tipo de QR:
-                        <!-- NUEVO: Opción "Sin QR" añadida -->
-                        <label style="cursor: pointer; margin-right: 10px; color: #64748b; font-weight: normal;">
+                        <label style="cursor: pointer; margin-right: 0; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-rg-footer" value="none" onchange="window.toggleQR('none', 'rg')"> Sin QR
                         </label>
-                        <label style="cursor: pointer; margin-right: 10px; color: #64748b; font-weight: normal;">
+                        <label style="cursor: pointer; margin-right: 0; color: #64748b; font-weight: normal;">
                             <input type="radio" name="qr-mode-rg-footer" value="default" onchange="window.toggleQR('default', 'rg')"> Oficial
                         </label>
                         <label style="cursor: pointer; color: #0d5c63; font-weight: bold;">
