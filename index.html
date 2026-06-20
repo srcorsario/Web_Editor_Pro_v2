@@ -25,7 +25,8 @@
                     <div id="status-carga" class="status-ok" style="flex: 1;">⏳ Conectando...</div>
                     <!-- NUEVO: Checkbox para activar/desactivar la pantalla flotante de Debug -->
                     <div style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd;">
-                        <input type="checkbox" id="toggle-debug-panel" checked style="cursor: pointer; margin: 0;">
+                        <!-- MODIFICADO: Eliminado 'checked' para que inicie deshabilitado visualmente por defecto -->
+                        <input type="checkbox" id="toggle-debug-panel" style="cursor: pointer; margin: 0;">
                         <label for="toggle-debug-panel" style="cursor: pointer; color: #555; font-weight: 600; margin: 0;">DEBUG</label>
                     </div>
                 </div>
@@ -289,8 +290,8 @@
     </div>
 
     <!-- NUEVO: Panel de Debug Visual Fijo -->
-    <!-- MODIFICADO: Añadido cursor: grab para feedback visual de arrastre -->
-    <div id="debug-panel" style="position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4; cursor: grab;">
+    <!-- MODIFICADO: Añadido 'display: none;' para iniciar oculto por defecto junto al cursor: grab -->
+    <div id="debug-panel" style="display: none; position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4; cursor: grab;">
         <div style="color: #f8fafc; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 4px;">🐛 DEBUG MODE ACTIVO</div>
         <div id="debug-versions" style="margin-bottom: 8px; color: #94a3b8;"></div>
         <hr style="border-color: #334155; margin: 5px 0;">
