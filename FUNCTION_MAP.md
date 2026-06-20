@@ -1,16 +1,35 @@
+    Regla de Oro: Antes de renombrar, mover o eliminar una función/variable listada aquí, verifica su sección ⚠️ DEPENDENCIAS CRUZADAS para evitar romper otros módulos o los onclick del HTML.
+
+🌐 Estado Global Compartido (window.*)
+
+El núcleo de la aplicación. Alterar una de estas variables afecta a múltiples archivos simultáneamente.
+Variable	Tipo	Archivo Origen	Escritores	Lectors
+window.currentMode	String	index.html	index.html (switchTab), ui.js (confirmarImportacion, hack en sincronizarConGoogleSheets)	config.js, app.js, index.html, ui.js
+window.datosLocales	Array	app.js	app.js (cargar)	app.js (múltiples), sugerencias-print-*.js, index.html (updateDebugPanel)
+window.hayCambiosSinGuardar	Boolean	app.js	app.js (moverPlato, aplicarCambiosPlato, toggleActivo, cargar, enviarAlExcel)	index.html (switchTab)
+window.optimisticState	Object	app.js	app.js (cargar, enviarAlExcel, cancelarModoOptimista)	app.js, sugerencias-print-*.js, index.html (updateDebugPanel)
+window.optimisticTimers	Object	app.js	app.js (iniciarContadorOptimista, cancelarModoOptimista)	index.html (switchTab, updateDebugPanel)
+window.APP_VERSIONS	Object	Varios	app.js, ui.js, sugerencias-print-*.js	index.html (updateDebugPanel)
+window.UI.tempImportFile	File	ui.js	ui.js (listener archivoLocal)	ui.js (confirmarImportacion, cancelarImportacion)
+window.lastSaveAttempt	Number	No definido explícitamente (leído como undefined)	-	ui.js (cargarGoogleSheets)
 📁 config.js
 
 No usa módulos. Se ejecuta en el scope global.
+Constantes
+
+    CSV_URL_RG, CSV_URL_USOPEN, WEB_APP_URL_RG, WEB_APP_URL_USOPEN
+        Es usado por: getWebAppUrl(), getCsvUrl() (ambas internas).
+
 getWebAppUrl()
 
     Retorna: String (URL del Web App de Google)
-    Lee: window.currentMode
+    Lee: window.currentMode, WEB_APP_URL_RG, WEB_APP_URL_USOPEN
     Es usado por: app.js (vía getWebAppUrlSafe()), ui.js (en sincronizarConGoogleSheets)
 
 getCsvUrl()
 
     Retorna: String (URL del CSV de Google Sheets)
-    Lee: window.currentMode
+    Lee: window.currentMode, CSV_URL_RG, CSV_URL_USOPEN
     Es usado por: app.js (vía getCsvUrlSafe()), index.html (en switchTab)
 
 📁 state.js
@@ -32,40 +51,95 @@ deleteKey(key)
     Escribe en: localStorage
     Es usado por: app.js (eliminarKeySeleccionada), ui.js (listener de btnEliminarKeySeleccionada)
 
+📁 languages.js
+
+No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo.
+Variables Globales Inyectadas
+
+    IDIOMAS_CONFIG (Object): Mapeo ISO -> Nombre visible.
+    IDIOMAS_ORDEN (Array): Orden de procesamiento.
+    IDIOMAS_CSV_INDICES (Object): Mapeo de qué columna del CSV pertenece a qué idioma.
+    ESTRUCTURA (Array): Arbol de categorías, subcategorías, IDs y rangos.
+    categoriesList, subCatsLang (Object/Array): Diccionarios de traducción de categorías.
+
+Lectores: app.js (carga, renderizado, traducción), ui.js (carga de columnas, render de radios).
 📁 app.js
 
 No usa módulos. Se ejecuta en el scope global. Contiene la lógica principal del Editor.
-window.hayCambiosSinGuardar (Variable)
+Variables Locales (Scope de archivo)
 
-    Tipo: Boolean
-    Escribe en: app.js (moverPlato, aplicarCambiosPlato, toggleActivo, cargar, enviarAlExcel)
-    Lee de: index.html (switchTab)
+    datosLocales (Array): Reflejo local de window.datosLocales.
+    platoEditandoId (Number), esNuevoPlato (Boolean), datosTempNuevo (Object): Estado del modal editor.
+    opcionesENActuales (Array): Almacena temporalmente las opciones de IA de traducción EN.
+    ALERGENOS_LISTA (Array), CROQUETAS_CONFIG (Object): Constantes estáticas de configuración de UI.
 
-window.optimisticState (Variable)
+Funciones Utilitarias (Compartidas)
+desglosarNombre(texto)
 
-    Tipo: Object ({ RG: {t, s}, USOPEN: {t, s} })
-    Escribe en: app.js (cargar, enviarAlExcel, cancelarModoOptimista)
-    Lee de: app.js (cargar, iniciarContadorOptimista), sugerencias-print-rg.js, sugerencias-print-usopen.js
+    Retorna: { nombre: String, uvas: String }
+    Es usado por: app.js (varios), sugerencias-print-rg.js (la sobrescribe en window), sugerencias-print-usopen.js (la redefine como fallback si no existe).
+
+extraerJSON(texto)
+
+    Retorna: Object (JSON parseado)
+    Es usado por: app.js (generarTraduccionEN, ejecutarTraduccionAutomatica)
+
+superLimpiar(texto)
+
+    Retorna: String
+    Es usado por: app.js (cargar, aplicarCambiosPlato)
+
+formatWineName(texto)
+
+    Retorna: String
+    Es usado por: app.js (abrirEditor, aplicarCambiosPlato, ejecutarTraduccionAutomatica)
+
+Funciones de Red y Estado
+getWebAppUrlSafe() / getCsvUrlSafe()
+
+    Retorna: String
+    Lee: window.WEB_APP_URL, window.CSV_URL, y sus funciones equivalentes.
+    Es usado por: Internamente en app.js.
 
 cargar(retryCount)
 
-    Retorna: Promise<void>
     Lee: getCsvUrlSafe(), window.optimisticState, window.ESTRUCTURA, window.IDIOMAS_ORDEN, window.IDIOMAS_CSV_INDICES
     Escribe en: window.datosLocales, window.hayCambiosSinGuardar, DOM (#status-carga, #editor-dinamico)
     Es usado por: index.html (switchTab), se auto-invoca al final del archivo.
 
 enviarAlExcel()
 
-    Retorna: Promise<void>
     Lee: getWebAppUrlSafe(), window.datosLocales, window.currentMode, window.IDIOMAS_ORDEN
     Escribe en: window.optimisticState, sessionStorage, window.hayCambiosSinGuardar, DOM (#btn-guardar-dinamico)
     Es usado por: index.html (botón #btn-guardar-dinamico inline onclick), index.html (switchTab)
 
+iniciarContadorOptimista(modo)
+
+    Lee: window.optimisticTimers, window.currentMode
+    Escribe en: window.optimisticTimers, sessionStorage, DOM (#optimistic-timer)
+    Es usado por: app.js (enviarAlExcel)
+
+cancelarModoOptimista(modo)
+
+    Escribe en: window.optimisticTimers, window.optimisticState, sessionStorage, DOM (#optimistic-timer)
+    Es usado por: index.html (botón inline onclick en el timer)
+
+Funciones de Renderizado y UI
+renderizar()
+
+    Lee: datosLocales, window.ESTRUCTURA
+    Escribe en: DOM (#editor-dinamico)
+
+generarMenuAgrupado()
+
+    Lee: datosLocales, window.ESTRUCTURA
+    Escribe en: DOM (#lista-agrupada)
+
 abrirEditor(id, esNuevo)
 
     Lee: window.datosLocales, window.IDIOMAS_ORDEN, window.IDIOMAS_CONFIG
-    Escribe en: Variables locales (platoEditandoId, esNuevoPlato), DOM (múltiples inputs del modal)
-    Es usado por: app.js (prepararNuevoPlato), index.html (botones generados dinámicamente con onclick)
+    Escribe en: Variables locales (platoEditandoId, esNuevoPlato), DOM (inputs del modal)
+    Es usado por: app.js (prepararNuevoPlato), index.html (botones dinámicos onclick)
 
 aplicarCambiosPlato()
 
@@ -73,11 +147,22 @@ aplicarCambiosPlato()
     Escribe en: window.datosLocales, window.hayCambiosSinGuardar
     Es usado por: index.html (botón modal onclick)
 
+abrirSelector() / cerrarModal(id)
+
+    Escribe en: DOM (#modal-selector)
+    Es usado por: index.html (botón flotante onclick)
+
+Funciones de Traducción
 generarTraduccionEN()
 
     Lee: DOM (#edit-es), getKeys()
-    Escribe en: DOM (#modal-traduccion-en)
+    Escribe en: DOM (#modal-traduccion-en), opcionesENActuales
     Es usado por: index.html (botón onclick)
+
+abrirModalTraduccionEN(), seleccionarOpcionEN(), confirmarTraduccionEN(), cerrarModalTraduccionEN()
+
+    Gestionan: El flujo interno del modal de selección de traducción EN.
+    Es usado por: index.html (botones onclick del modal)
 
 ejecutarTraduccionAutomatica()
 
@@ -85,20 +170,37 @@ ejecutarTraduccionAutomatica()
     Escribe en: DOM (inputs de idiomas restantes)
     Es usado por: index.html (botón onclick)
 
-cancelarModoOptimista(modo)
+Funciones de API Keys (Legacy/Fallback en app.js)
 
-    Escribe en: window.optimisticState, sessionStorage, DOM (#optimistic-timer)
-    Es usado por: index.html (botón inline onclick en el timer)
+    actualizarListaKeys(), agregarKey(), eliminarKeySeleccionada()
+    Nota: Intentan delegar a UI.actualizarListaKeys(). Si UI no existe aún (por ser módulo), actúan como fallback manipulando el DOM directamente.
 
 📁 ui.js (Módulo ES)
 
 Usa type="module". Todo está encapsulado, pero se expone globalmente al final via window.UI = UI;.
-stateContainer (Variable Interna)
+Variables Internas
 
-    Tipo: { headers: [], csvData: [], currentProMode: 'RG' }
-    Nota Crítica: NO es window.datosLocales. Es una copia exclusiva para la pestaña "Traductor Pro".
-    Escribe en: UI.cargarGoogleSheets, UI.confirmarImportacion, UI.iniciarTraduccionPorLotes
-    Lee de: UI.renderTable, UI.sincronizarConGoogleSheets, UI.exportarCSV
+    currentKeyIndex (Number): Para balanceo de carga en traducción masiva.
+    procesoDetenido, procesoPausado (Boolean): Control de flujo de iniciarTraduccionPorLotes.
+    activeLang (String): Idioma activo en la vista previa de la pestaña Pro.
+    stateContainer (Object): ¡CRÍTICO! NO es window.datosLocales. Es una copia exclusiva para la pestaña "Traductor Pro" con sus propias headers y csvData.
+
+UI.log(mensaje)
+
+    Escribe en: Consola del navegador, DOM (#status-carga), DOM (#consola)
+    Es usado por: Casi todas las funciones de ui.js.
+
+UI.renderRadiosIdiomas()
+
+    Lee: window.IDIOMAS_CONFIG, activeLang
+    Escribe en: DOM (#radiosIdiomas), activeLang
+    Es usado por: ui.js (al final, en DOMContentLoaded)
+
+UI.renderTable()
+
+    Lee: stateContainer, activeLang, window.IDIOMAS_CONFIG
+    Escribe en: DOM (#tableHeadRow, #tablaBody)
+    Es usado por: ui.js (Interno tras cargar datos o traducir)
 
 UI.cargarGoogleSheets(targetUrl, retryCount)
 
@@ -106,44 +208,67 @@ UI.cargarGoogleSheets(targetUrl, retryCount)
     Escribe en: stateContainer, DOM (#consola)
     Es usado por: Listeners internos de loadSheetsBtnRG y loadSheetsBtnUSOpen
 
+UI.actualizarTextoBotonSync()
+
+    Lee: stateContainer.currentProMode
+    Escribe en: DOM (#btnSyncSheets)
+
 UI.sincronizarConGoogleSheets()
 
     Lee: stateContainer, stateContainer.currentProMode, window.getWebAppUrl (desde config.js)
-    Escribe en: Red (Fetch POST), DOM (#consola)
+    Escribe en: window.currentMode (Temporalmente como hack para obtener la URL correcta de config.js), Red (Fetch POST), DOM (#consola)
     Es usado por: Listener interno de btnSyncSheets
 
-UI.confirmarImportacion(mode)
+UI.confirmarImportacion(mode) / UI.cancelarImportacion()
 
-    Lee: window.UI.tempImportFile
-    Escribe en: stateContainer, window.currentMode
-    Es usado por: index.html (botón inline onclick en #modal-seleccionar-destino)
+    Lee/Escribe: window.UI.tempImportFile, stateContainer, window.currentMode, DOM (#modal-seleccionar-destino, #archivoLocal)
+    Es usado por: index.html (botones inline onclick en #modal-seleccionar-destino)
 
-UI.cancelarImportacion()
+UI.exportarCSV(headers, csvData) / UI.importarCSV(file, callback)
 
-    Escribe en: DOM (#modal-seleccionar-destino, #archivoLocal), window.UI.tempImportFile
-    Es usado por: index.html (botón inline onclick)
+    Lee/Escribe: window.Papa, Blob API, FileReader API.
+    Es usado por: Listeners internos de saveCsvBtn y flujo de importación.
+
+UI.iniciarTraduccionPorLotes(stateContainerParam)
+
+    Lee: getKeys(), stateContainer, DOM (rangos)
+    Escribe en: stateContainer.csvData, currentKeyIndex, DOM (#consola, #tablaBody)
+    Es usado por: Listener interno de btnIniciar
 
 📁 sugerencias-print-rg.js y sugerencias-print-usopen.js
 
 IIFEs (Invocación Inmediata). Se ejecutan en scope aislado pero inyectan en window.
 window.renderCartaRG() / window.renderCartaUSOPEN()
 
-    Lee: window.datosLocales, window.optimisticState (para parchear)
+    Lee: window.datosLocales, window.optimisticState (para aplicar parche si el CDN está desactualizado)
     Escribe en: DOM (#sugerencias-contenido / #sugerencias-contenido-usopen)
     Es usado por: index.html (switchTab)
 
+window.imprimirSugerenciasRG() / window.imprimirSugerenciasUSOPEN()
+
+    Lee: DOM (#sugerencias-contenido / #sugerencias-contenido-usopen)
+    Escribe en: Nueva ventana (Window.open)
+    Es usado por: HTML generado dinámicamente (botón imprimir onclick)
+
 window.toggleQR(tipo, modo)
 
+    Lee: tipo, modo
     Escribe en: DOM (img #img-qr-rg o #img-qr-usopen)
-    Es usado por: HTML generado dinámicamente dentro de las propias funciones de renderizado (radios inline).
+    Es usado por: HTML generado dinámicamente dentro de las propias funciones de renderizado (inputs radio inline onchange).
 
 📁 index.html (Scripts Inline)
 
-Contiene la orquestación de pestañas y el sistema de arrastre del panel Debug.
+Contiene la orquestación de pestañas, sistema de arrastre del panel Debug y toggle de visibilidad.
+actualizarTextoBotonGuardar()
+
+    Lee: window.currentMode
+    Escribe en: DOM (#btn-guardar-dinamico)
+    Es usado por: switchTab, inicialización.
+
 switchTab(tabId, btnElement)
 
     Lee: window.hayCambiosSinGuardar, window.cargar, window.renderCartaRG, window.renderCartaUSOPEN, window.optimisticTimers
-    Escribe en: window.currentMode, DOM (tabs, botones flotantes)
+    Escribe en: window.currentMode, DOM (tabs, botones flotantes, #optimistic-timer)
     Es usado por: Botones .tab-btn inline onclick
 
 updateDebugPanel()
@@ -152,13 +277,14 @@ updateDebugPanel()
     Escribe en: DOM (#debug-versions, #debug-state)
     Es usado por: setInterval interno (cada 1s)
 
-    ¿Cómo usar este archivo en tu flujo de trabajo?
+Listeners de Arrastre (Debug Panel)
 
-    Si vas a extraer una función (ej. pasar cargar() a un nuevo archivo loader.js):
-         Buscas cargar() en el FUNCTION_MAP.md.
-         Ves que Lee getCsvUrlSafe() y Escribe en window.datosLocales.
-         Te aseguras de importar/exportar o mantener globales esas dependencias antes de cortar la función.
-    Si vas a renombrar una variable global (ej. datosLocales a menuData):
-         Buscas window.datosLocales en el mapa.
-         El mapa te dice exactamente qué 4 archivos la leen y cuáles 3 la escriben. Vas a esos archivos y aplicas el cambio sin miedo a olvidar uno.
-    Actualización: Cuando añadas una función nueva que cruce archivos (ej. una nueva función en app.js que llame a algo de ui.js), simplemente añades el bloque correspondiente debajo del archivo en el Markdown. Son 3 líneas de mantenimiento que te ahorran horas de debug.
+    Objetivo: #debug-panel
+    Eventos: mousedown, mousemove, mouseup
+    Escribe en: Estilos inline de #debug-panel (left, top, cursor)
+
+Listeners de Toggle (Debug Panel)
+
+    Objetivo: #toggle-debug-panel
+    Eventos: change
+    Escribe en: Estilo display de #debug-panel (none o block)
